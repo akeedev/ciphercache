@@ -89,6 +89,8 @@ def handle_request(state: DaemonState, raw: dict[str, Any]) -> dict[str, Any]:
     if request.message_type != "request":
         return _error(request.message_id, request.op, ERROR_INVALID_REQUEST, "Invalid message type")
 
+    state.expire_if_needed()
+
     handler = _HANDLERS.get(request.op)
     if handler is None:
         return _error(request.message_id, request.op, ERROR_INVALID_REQUEST, "Unknown operation")

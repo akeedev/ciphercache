@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,26 @@ def test_get_secret_locked_returns_locked(tmp_path: Path) -> None:
         "type": "request",
         "op": "get_secret",
         "payload": {"ticket": "nope", "secret_name": "service/api"},
+    }
+    response = handle_request(state, request)
+    assert response["payload"]["code"] == ERROR_LOCKED
+
+
+def test_get_secret_expired_ttl_returns_locked(tmp_path: Path) -> None:
+    config = DaemonConfig(data_dir=tmp_path)
+    state = DaemonState(config=config)
+    state.unlock(60)
+    state.secrets["default"] = {"service/api": {"api_key": "test"}}
+    ticket_path = state.issue_ticket("demo")
+    ticket = ticket_path.read_text(encoding="utf-8")
+    state.ttl_expiry = time.monotonic() - 1
+
+    request = {
+        "version": "v0",
+        "id": "1",
+        "type": "request",
+        "op": "get_secret",
+        "payload": {"ticket": ticket, "secret_name": "service/api"},
     }
     response = handle_request(state, request)
     assert response["payload"]["code"] == ERROR_LOCKED

@@ -65,6 +65,8 @@ Request payload:
 ```
 Notes:
 - Store selection is out-of-band to IPC (CLI/daemon configuration) and uses a store alias.
+- TTL expiry is enforced lazily: after expiry, the next request must be rejected (typically
+  with `locked`), and the daemon may transition to locked state at that time.
 
 ### `lock`
 Request payload: empty object.

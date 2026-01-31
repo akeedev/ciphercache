@@ -82,7 +82,8 @@ long-lived process environments.
    - Clients connect via Unix domain socket, present ticket, and request secrets by name.
    - Clients may restart repeatedly without additional store unlocking, until TTL expires.
 4. **Session end:**
-   - TTL expiry or `ccache lock` wipes cached secrets and invalidates session state.
+   - TTL expiry or `ccache lock` ends the session. The daemon may invalidate tickets lazily
+     (on the next request) and then wipe cached secrets.
 
 
 ## Extensions (Future)
@@ -96,12 +97,11 @@ long-lived process environments.
 
 ## Spec Map
 This repository uses `spec/NNN-*.md` documents.
-- `spec/000-overview.md` (this file)
-- `spec/010-architecture.md` (system architecture)
-Planned follow-up specs (initial placeholders):
-- `spec/020-ipc-protocol.md`
-- `spec/030-session-tickets.md`
-- `spec/040-store-keepassxc.md`
-- `spec/050-cache-and-crypto.md`
-- `spec/060-cli.md`
-- `spec/070-policy.md`
+- `spec/000-overview.md` (this file; high-level goals and constraints)
+- `spec/010-architecture.md` (system architecture and component boundaries)
+- `spec/020-ipc-protocol.md` (IPC framing, envelope, and request/response schema)
+- `spec/030-daemon.md` (daemon process, Unix socket server loop, and lifecycle)
+- `spec/040-client-sdk.md` (client SDK connection, ticket loading, request helpers)
+- `spec/050-cli.md` (CLI commands built on the SDK)
+
+Note: The feature specs listed above are not complete; they evolve as the project matures.

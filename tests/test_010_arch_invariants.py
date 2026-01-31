@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import time
+
 from ciphercache.daemon.state import DaemonConfig, DaemonState
 from ciphercache.ttl import parse_ttl
 
@@ -32,6 +34,29 @@ def test_tickets_invalid_when_locked(tmp_path: Path) -> None:
 
     state.lock()
     assert state.validate_ticket(token) is False
+
+
+def test_lock_clears_tickets(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    state.unlock(parse_ttl("1h"))
+    ticket_path = state.issue_ticket("demo")
+    token = ticket_path.read_text(encoding="utf-8")
+    assert state.validate_ticket(token) is True
+
+    state.lock()
+    state.unlock(parse_ttl("1h"))
+    assert state.validate_ticket(token) is False
+
+
+def test_expired_ttl_invalidates_tickets(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    state.unlock(parse_ttl("1h"))
+    ticket_path = state.issue_ticket("demo")
+    token = ticket_path.read_text(encoding="utf-8")
+    state.ttl_expiry = time.monotonic() - 1
+
+    assert state.validate_ticket(token) is False
+    assert state.locked is True
 
 
 def test_default_store_alias_set_on_unlock(tmp_path: Path) -> None:

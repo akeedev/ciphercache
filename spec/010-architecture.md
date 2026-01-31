@@ -80,7 +80,9 @@ Two related concepts:
 MVP semantics:
 - Unlocking via `ccache unlock --ttl <duration>` sets the daemon to an unlocked state for the TTL duration.
 - During unlocked state, clients can repeatedly connect (including after restarts), present valid tickets, and request secrets.
-- On TTL expiry or `lock`, daemon transitions to locked state and wipes cache.
+- On TTL expiry, the session ends and requests must be rejected. The daemon may
+  transition to locked state lazily (on the next request) and then wipe cache.
+  `lock` transitions immediately and wipes cache.
 
 TTL format:
 - TTL is a human-readable duration expressed in seconds, minutes, hours, days, or infinity.
@@ -192,6 +194,7 @@ mTLS details are specified in a future spec (placeholder).
 - Socket directory permissions prevent other local users from connecting.
 - Only `ciphercached` reads from the secret store.
 - Client restarts do not require a new store unlock while TTL is valid.
-- On `lock` or TTL expiry, cached secrets are wiped.
+- On `lock`, cached secrets are wiped immediately. After TTL expiry, cached
+  secrets must become inaccessible and may be wiped lazily on the next request.
 - Tickets are valid only while the daemon is unlocked (MVP).
 - MVP supports a single active store; store aliases enable future multi-store support.

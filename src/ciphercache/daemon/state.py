@@ -51,9 +51,18 @@ class DaemonState:
         self.locked = True
         self.ttl_expiry = None
         self.secrets.clear()
+        self.tickets.clear()
+
+    def expire_if_needed(self) -> None:
+        """Expire the session if TTL has passed."""
+        if self.locked or self.ttl_expiry is None:
+            return
+        if time.monotonic() >= self.ttl_expiry:
+            self.lock()
 
     def ttl_remaining_seconds(self) -> int:
         """Return remaining TTL seconds (0 if locked; large value for infinity)."""
+        self.expire_if_needed()
         if self.locked:
             return 0
         if self.ttl_expiry is None:
@@ -77,6 +86,7 @@ class DaemonState:
 
     def validate_ticket(self, token: str) -> bool:
         """Validate a ticket token against the active set."""
+        self.expire_if_needed()
         if self.locked:
             return False
         return token in self.tickets
