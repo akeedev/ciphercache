@@ -7,13 +7,13 @@ This is a general, non-project specific set of coding guidelines.
 
 ## Session start checklist
 - Read this file (AGENTS.md)
-- Read spec/000-architecture.md
+- Read spec/000-overview.md and spec/010-architecture.md
 - Read SESSION.md to continue from where you left off last time.
 
 
 ## Workflow
 - We work spec-first. Before implementing, read:
-  - $PROJECT_DIR$/spec/000-architecture.md
+  - $PROJECT_DIR$/spec/000-overview.md and spec/010-architecture.md
   - when available the current feature spec under $PROJECT_DIR$/spec/NNN-*.md (I will name it).
 - We use uv, create according pyproject.toml files.
 - Create according run configurations for uv-based running, pytest, mypy and linting.
