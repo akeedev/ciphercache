@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from ciphercache.daemon.state import DaemonConfig, DaemonState
+from ciphercache.ttl import parse_ttl
+
+
+def test_ticket_files_are_0600(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    ticket_path = state.issue_ticket("demo")
+    mode = ticket_path.stat().st_mode & 0o777
+    assert mode == 0o600
+
+
+def test_lock_wipes_cached_secrets(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    state.unlock(parse_ttl("1h"))
+    state.secrets["default"] = {"service/api": {"api_key": "value"}}
+    state.lock()
+    assert state.secrets == {}
+
+
+def test_tickets_invalid_when_locked(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    ticket_path = state.issue_ticket("demo")
+    token = ticket_path.read_text(encoding="utf-8")
+    assert state.validate_ticket(token) is False
+
+    state.unlock(parse_ttl("1h"))
+    assert state.validate_ticket(token) is True
+
+    state.lock()
+    assert state.validate_ticket(token) is False
+
+
+def test_default_store_alias_set_on_unlock(tmp_path: Path) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    state.unlock(parse_ttl("1h"))
+    assert state.active_store_alias == "default"

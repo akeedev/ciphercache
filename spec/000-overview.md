@@ -50,6 +50,7 @@ long-lived process environments.
   - Layer 1: OS peer credentials (UID/GID validation)
   - Layer 2: per-client session tickets (opaque bearer tokens) stored as 0600 files
 - One external secret store integration: KeePassXC (exact integration details specified separately).
+  MVP supports a single active store, but the design allows adding multiple stores later.
 - In-memory caching in the daemon, protected by encryption via an ephemeral session master key.
 - CLI commands to unlock/lock/status and to initialize client tickets.
 
@@ -88,6 +89,7 @@ long-lived process environments.
 - Optional TCP listener with mTLS (mutual TLS) for LAN scenarios.
 - Optional Layer 3 client credentials (Keychain-backed keypairs, challenge-response).
 - Policy engine for per-client secret allowlists.
+- Multiple store support (selectable by alias).
 - Alternative stores (age/GPG/SOPS-based file stores).
 - MCP adapter layer that fetches secrets via the agent API.
 

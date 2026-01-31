@@ -127,6 +127,11 @@ Layer 3 (Keychain-backed client credentials) is explicitly deferred to a future 
 - The store integration must avoid leaking secrets via process arguments and logs.
 - The KeePassXC database path is supplied to the daemon via command-line argument; details are
   specified in `spec/040-store-keepassxc.md`.
+- Store identity is represented by a stable alias (not a filesystem path). The CLI maps aliases
+  to store paths and passes the active store to the daemon. IPC requests may reference a store
+  alias; in MVP a single active store is supported and acts as the default.
+- Rationale: aliases keep IPC and client code stable while allowing multiple stores later without
+  exposing filesystem paths to clients.
 
 The mapping from store entries to secret names and JSON payloads is specified in `spec/040-store-keepassxc.md`.
 
@@ -179,3 +184,14 @@ mTLS details are specified in a future spec (placeholder).
 - KeePassXC integration mechanics (CLI vs library) and mapping conventions.
 - AEAD primitive choice and memory wipe strategy.
 - launchd plist details for daemon lifecycle.
+
+## Invariants
+- `ciphercache` must be secure by default (no secrets in logs).
+- CLI never passes secrets via command-line arguments.
+- Ticket files are created with 0600 permissions.
+- Socket directory permissions prevent other local users from connecting.
+- Only `ciphercached` reads from the secret store.
+- Client restarts do not require a new store unlock while TTL is valid.
+- On `lock` or TTL expiry, cached secrets are wiped.
+- Tickets are valid only while the daemon is unlocked (MVP).
+- MVP supports a single active store; store aliases enable future multi-store support.

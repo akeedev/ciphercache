@@ -70,13 +70,20 @@ This is a general, non-project specific set of coding guidelines.
 - Formatting/linting: adhere to repo config (ruff/black/etc.).
 - Use dataclasses for data structures when appropriate.
 - Use type annotations for all public symbols or where appropriate.
+- Each Python file starts with a module docstring describing its purpose.
+- Each public class and public function has a brief docstring.
+- For dataclasses, add brief inline comments for non-obvious fields or describe them in the class docstring.
+- Use doctests for small, pure functions where examples add clarity; avoid doctests for I/O,
+  timing-dependent behavior, or complex state.
 
 
 ## Testing
 - Add/adjust pytest tests for new behavior.
 - At least create one test-script for each feature file in $PROJECT_DIR$/spec
 - Name test-scripts according to the feature spec file, e.g. spec/010-foo.md -> tests/test_010_foo.py
-- Run relevant tests after changes; if tests fail, fix or explain and ask for review.
+- In addition to spec-based tests, add unit tests per module or public function for edge cases and error paths.
+- Run relevant tests after changes; if tests fail, fix them before reporting success or explain why they cannot be fixed.
+- Always run pytest, mypy, and ruff for relevant changes before reporting success.
 - Always mock API calls or https: calls in tests
 
 
