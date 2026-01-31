@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/2026_ai_pycoding_template.iml" filepath="$PROJECT_DIR$/.idea/2026_ai_pycoding_template.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ciphercache.iml" filepath="$PROJECT_DIR$/.idea/ciphercache.iml" />
     </modules>
   </component>
 </project>
