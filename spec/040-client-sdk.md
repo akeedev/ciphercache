@@ -103,7 +103,8 @@ If `agent.json` exists and is readable, the SDK should use its socket path.
 ## Lifecycle Overview
 - Instantiate `ClientConfig`.
 - Instantiate `Client`.
-- Load ticket at initialization (or explicitly via `load_ticket`) before requests.
+- The SDK attempts to load the ticket at initialization if the ticket file exists.
+  Otherwise it loads it on first request that needs it or via explicit `load_ticket()`.
 - Each request uses a new socket connection (one request per connection).
 - Responses are decoded, typed, and returned or raised as exceptions.
 - `unlock` is called explicitly before `get_secret` to avoid unexpected store prompts.

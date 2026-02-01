@@ -13,6 +13,22 @@ Optionally, we might later add a **TCP listener with mTLS (mutual TLS, i.e., TLS
 uv run python main.py
 ```
 
+## SDK usage
+
+```python
+from ciphercache import Client, ClientConfig
+
+config = ClientConfig()
+client = Client(config=config)
+
+# Unlock the daemon and cache the required secrets.
+client.unlock("1h", ["service/api"])
+
+# Fetch a cached secret.
+secret = client.get_secret("service/api")
+print(secret["api_key"])
+```
+
 ## Example tests
 
 ```bash
