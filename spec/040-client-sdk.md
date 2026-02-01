@@ -31,8 +31,10 @@ This SDK is the only supported client SDK in MVP.
 - Keep `unlock` explicit to avoid unexpected KeePassXC prompts.
 
 ## Ticket Loading
-Ticket loading is required before `get_secret` requests. The SDK reads the ticket
-from the ticket file (0600) and includes the token in request payloads.
+ Ticket loading is required before `get_secret` requests. The SDK reads the ticket
+ from the ticket file (0600) and includes the token in request payloads. If the
+ ticket is missing, the SDK may call `client_init` lazily using `client_name` from
+ config and then load the returned ticket path.
 
 Notes:
 - The daemon reads secrets immediately at unlock (KeePassXC prompt happens then).
@@ -84,7 +86,8 @@ UX note:
 - `ciphercache.client.ClientConfig`
   - `data_dir: Path` (defaults to `~/Library/Application Support/ciphercache`)
   - `socket_path: Path | None`
-  - `ticket_path: Path | None`
+- `ticket_path: Path | None`
+- `client_name: str` (default `"default"`)
   - `store_alias: str | None`
   - `max_frame_bytes: int` (default `1_000_000`)
   - `read_timeout_seconds: float` (default `5.0`)
@@ -99,6 +102,7 @@ UX note:
   - `status() -> Status`
   - `unlock(ttl: str, secrets: list[str]) -> bool` (secrets must be non-empty)
   - `lock() -> bool`
+  - `close_store() -> bool`
   - `get_secret(name: str) -> dict[str, object]`
   - `client_init(client_name: str) -> Path`
   - `load_ticket() -> str`
@@ -109,10 +113,14 @@ UX note:
 - Instantiate `Client`.
 - The SDK attempts to load the ticket at initialization if the ticket file exists.
   Otherwise it loads it on first request that needs it or via explicit `load_ticket()`.
+- If a request fails with `unauthorized`, the SDK should re-initialize a ticket once
+  and retry the request to handle daemon restarts.
 - Each request uses a new socket connection (one request per connection).
 - Responses are decoded, typed, and returned or raised as exceptions.
 - `unlock` is called explicitly before `get_secret` to avoid unexpected store prompts.
 - `unlock` specifies a non-empty list of secret names to fetch and cache; new secrets require a new unlock.
+- `close_store` clears cached secrets while preserving tickets.
+- The SDK does not select database paths; store configuration is fixed by the daemon at startup.
 
 ## Acceptance Criteria (MVP)
 - SDK can connect to the daemon socket and perform `ping`.
@@ -121,6 +129,7 @@ UX note:
 - `get_secret` returns secret dict on success.
 - `status()` returns a typed `Status`.
 - `unlock` and `lock` are exposed in the SDK and used by the CLI as a thin wrapper.
+- `close_store` is exposed and does not invalidate tickets.
 - Errors from the daemon are mapped to the correct Python exception types.
 - Connection failures are retried with a small backoff.
 - `unlock` accepts a list of secret names to fetch and cache.

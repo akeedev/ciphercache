@@ -159,3 +159,26 @@ def test_unlock_with_store_config_missing_secret(tmp_path: Path, monkeypatch: py
     }
     response = handle_request(state, request)
     assert response["payload"]["code"] == ERROR_NOT_FOUND
+
+
+def test_close_store_preserves_tickets(tmp_path: Path) -> None:
+    """close_store should clear cached secrets but keep tickets."""
+    config = DaemonConfig(data_dir=tmp_path)
+    state = DaemonState(config=config)
+    state.unlock(60, ["service/api"])
+    ticket_path = state.issue_ticket("demo")
+    token = ticket_path.read_text(encoding="utf-8")
+    state.secrets["default"] = {"service/api": {"api_key": "demo"}}
+
+    request = {
+        "version": "v0",
+        "id": "1",
+        "type": "request",
+        "op": "close_store",
+        "payload": {},
+    }
+    response = handle_request(state, request)
+    assert response["type"] == "response"
+    assert state.locked is True
+    assert state.secrets == {}
+    assert token in state.tickets

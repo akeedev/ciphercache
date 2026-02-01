@@ -35,7 +35,7 @@ encryption.
   "version": "v0",
   "id": "uuid",
   "type": "request|response|error",
-  "op": "unlock|lock|status|client_init|get_secret|ping",
+  "op": "unlock|lock|close_store|status|client_init|get_secret|ping",
   "payload": { ... }
 }
 ```
@@ -73,6 +73,12 @@ Notes:
 
 ### `lock`
 Request payload: empty object.
+
+### `close_store`
+Request payload: empty object.
+Notes:
+- Clears cached secrets and allowed secret list without invalidating tickets.
+- Resets the active store alias.
 
 ### `status`
 Response payload:
@@ -146,6 +152,7 @@ Errors are responses with `type: "error"`:
 - `get_secret` with an invalid ticket returns `code: "unauthorized"`.
 - `get_secret` with an unknown store alias returns `code: "not_found"`.
 - Unknown `op` returns `code: "invalid_request"`.
+- `close_store` clears cached secrets while preserving tickets.
 
 ## Example Exchange (v0)
 Request (`get_secret`):

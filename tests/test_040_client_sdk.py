@@ -61,6 +61,37 @@ def _serve_once(socket_path: Path, response_envelope: dict[str, object]) -> thre
     return thread
 
 
+def _serve_sequence(socket_path: Path, responses: list[dict[str, object]]) -> threading.Thread:
+    """Start a server that replies with a sequence of envelopes."""
+    socket_path.parent.mkdir(parents=True, exist_ok=True)
+    if socket_path.exists():
+        socket_path.unlink()
+
+    def run() -> None:
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            listener.bind(str(socket_path))
+            listener.listen(len(responses))
+            for response_envelope in responses:
+                conn, _ = listener.accept()
+                try:
+                    length_prefix = _recv_exact(conn, 4)
+                    if len(length_prefix) == 4:
+                        length = int.from_bytes(length_prefix, "big")
+                        _recv_exact(conn, length)
+                    conn.sendall(encode_message(response_envelope))
+                finally:
+                    conn.close()
+        finally:
+            listener.close()
+            if socket_path.exists():
+                socket_path.unlink()
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    return thread
+
+
 def test_status_returns_typed_dataclass() -> None:
     """Ensure status returns a typed Status object."""
     data_dir = _short_temp_dir()
@@ -147,6 +178,43 @@ def test_get_secret_uses_ticket() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
+def test_get_secret_auto_client_init_when_missing_ticket() -> None:
+    """get_secret auto-initializes a ticket when missing."""
+    data_dir = _short_temp_dir()
+    tickets_dir = data_dir / "tickets"
+    tickets_dir.mkdir(parents=True, exist_ok=True)
+    ticket_path = tickets_dir / "client.ticket"
+    ticket_path.write_text("token", encoding="utf-8")
+    socket_path = data_dir / "ciphercached.sock"
+
+    responses: list[dict[str, object]] = [
+        {
+            "version": "v0",
+            "id": "init",
+            "type": "response",
+            "op": "client_init",
+            "payload": {"ticket_path": str(ticket_path)},
+        },
+        {
+            "version": "v0",
+            "id": "secret",
+            "type": "response",
+            "op": "get_secret",
+            "payload": {"secret": {"api_key": "demo"}},
+        },
+    ]
+
+    thread = _serve_sequence(socket_path, responses)
+    try:
+        config = ClientConfig(data_dir=data_dir, ticket_path=tickets_dir / "missing.ticket")
+        client = Client(config=config)
+        secret = client.get_secret("service/api")
+        assert secret["api_key"] == "demo"
+    finally:
+        thread.join(timeout=1.0)
+        rmtree(data_dir, ignore_errors=True)
+
+
 def test_error_mapping_unauthorized() -> None:
     """Unauthorized errors map to PermissionError."""
     data_dir = _short_temp_dir()
@@ -163,6 +231,49 @@ def test_error_mapping_unauthorized() -> None:
         client = Client(config=ClientConfig(data_dir=data_dir))
         with pytest.raises(PermissionError):
             client.request("ping", {})
+    finally:
+        thread.join(timeout=1.0)
+        rmtree(data_dir, ignore_errors=True)
+
+
+def test_get_secret_retries_on_invalid_ticket() -> None:
+    """get_secret should re-init ticket once on unauthorized."""
+    data_dir = _short_temp_dir()
+    tickets_dir = data_dir / "tickets"
+    tickets_dir.mkdir(parents=True, exist_ok=True)
+    ticket_path = tickets_dir / "default.ticket"
+    ticket_path.write_text("token", encoding="utf-8")
+    socket_path = data_dir / "ciphercached.sock"
+
+    responses: list[dict[str, object]] = [
+        {
+            "version": "v0",
+            "id": "secret",
+            "type": "error",
+            "op": "get_secret",
+            "payload": {"code": "unauthorized", "message": "Invalid ticket"},
+        },
+        {
+            "version": "v0",
+            "id": "init",
+            "type": "response",
+            "op": "client_init",
+            "payload": {"ticket_path": str(ticket_path)},
+        },
+        {
+            "version": "v0",
+            "id": "secret",
+            "type": "response",
+            "op": "get_secret",
+            "payload": {"secret": {"api_key": "demo"}},
+        },
+    ]
+
+    thread = _serve_sequence(socket_path, responses)
+    try:
+        client = Client(config=ClientConfig(data_dir=data_dir))
+        secret = client.get_secret("service/api")
+        assert secret["api_key"] == "demo"
     finally:
         thread.join(timeout=1.0)
         rmtree(data_dir, ignore_errors=True)

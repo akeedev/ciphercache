@@ -53,6 +53,9 @@ client.unlock("1h", ["service/api"])
 # Fetch a cached secret.
 secret = client.get_secret("service/api")
 print(secret["api_key"])
+
+# Close the store (clears cached secrets but keeps tickets).
+client.close_store()
 ```
 
 ## KeePassXC integration (daemon)

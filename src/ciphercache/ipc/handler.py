@@ -183,6 +183,12 @@ def _handle_lock(state: DaemonState, request: Envelope) -> dict[str, Any]:
     return _response(request, {"ok": True})
 
 
+def _handle_close_store(state: DaemonState, request: Envelope) -> dict[str, Any]:
+    """Handle close_store requests."""
+    state.close_store()
+    return _response(request, {"ok": True})
+
+
 def _handle_client_init(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle client_init requests."""
     client_name = _require_string(request.payload, "client_name")
@@ -219,6 +225,7 @@ _HANDLERS = {
     "status": _handle_status,
     "unlock": _handle_unlock,
     "lock": _handle_lock,
+    "close_store": _handle_close_store,
     "client_init": _handle_client_init,
     "get_secret": _handle_get_secret,
 }

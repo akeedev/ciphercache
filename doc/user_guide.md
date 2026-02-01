@@ -13,6 +13,7 @@ client = Client(config=ClientConfig())
 client.unlock("1h", ["service/api"])
 secret = client.get_secret("service/api")
 print(secret["api_key"])
+client.close_store()
 ```
 
 ## Installing

@@ -15,6 +15,7 @@ Define how `ciphercached` fetches secrets from a local KeePassXC database using
 - Direct integration with KeePassXC GUI or IPC/DBus.
 - Incremental refresh or live sync.
 - Encrypted IPC between client and daemon.
+- Client-driven database selection or per-request store configuration.
 
 ## Rationale
 `keepassxc-cli show` requires a prompt per entry. `export` allows a single unlock
@@ -48,7 +49,8 @@ Parsing note:
 - Secrets are cached only for the current TTL and only for requested names.
 
 ## Configuration
-Store configuration is provided via `DaemonConfig` or a dedicated store config:
+Store configuration is provided via `DaemonConfig` or a dedicated store config and
+is fixed at daemon startup (clients do not select database paths in MVP):
 - `database_path: Path`
 - `key_file_path: Path | None`
 - `yubikey_slot: str | None` (e.g., `"1"` or `"1:23753626"`)

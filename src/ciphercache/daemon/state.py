@@ -86,6 +86,14 @@ class DaemonState:
         self.allowed_secrets.clear()
         self.tickets.clear()
 
+    def close_store(self) -> None:
+        """Close the active store, wiping cached secrets but preserving tickets."""
+        self.locked = True
+        self.ttl_expiry = None
+        self.active_store_alias = None
+        self.secrets.clear()
+        self.allowed_secrets.clear()
+
     def expire_if_needed(self) -> None:
         """Expire the session if TTL has passed."""
         if self.locked or self.ttl_expiry is None:

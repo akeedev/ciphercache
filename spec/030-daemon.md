@@ -31,6 +31,7 @@ or crypto internals.
   - Layer 2: ticket validation (handled in IPC logic).
 - Manage daemon lifecycle: startup, graceful shutdown, lock on exit.
 - Only `unlock` initiates store access and user interaction; `get_secret` never triggers unlock.
+- `close_store` clears cached secrets while preserving tickets.
 - Unlock requests include an explicit list of secret names to fetch and cache.
 
 ## Process Model
@@ -72,6 +73,7 @@ or crypto internals.
 - Connections that exceed read/write timeouts are closed.
 - `get_secret` returns `locked` if the daemon is locked; it does not initiate unlock.
 - `unlock` requests must include a non-empty list of secrets to cache; otherwise `invalid_request`.
+- `close_store` clears cached secrets and resets store alias while preserving tickets.
 
 ## Access Control (MVP)
 - **Layer 0:** socket path is in an owner-only directory.

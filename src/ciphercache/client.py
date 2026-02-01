@@ -45,6 +45,7 @@ class ClientConfig:
     data_dir: Path = field(default_factory=lambda: _default_data_dir())
     socket_path: Path | None = None
     ticket_path: Path | None = None
+    client_name: str = "default"
     store_alias: str | None = None
     max_frame_bytes: int = 1_000_000
     read_timeout_seconds: float = 5.0
@@ -117,6 +118,11 @@ class Client:
         response = self.request("lock", {})
         return bool(response.get("ok"))
 
+    def close_store(self) -> bool:
+        """Close the active store, clearing cached secrets but preserving tickets."""
+        response = self.request("close_store", {})
+        return bool(response.get("ok"))
+
     def client_init(self, client_name: str) -> Path:
         """Request a new client ticket from the daemon."""
         payload: dict[str, Any] = {"client_name": client_name}
@@ -128,15 +134,43 @@ class Client:
 
     def get_secret(self, name: str) -> dict[str, object]:
         """Fetch a secret by name from the daemon."""
-        ticket = self._ticket or self.load_ticket()
-        payload: dict[str, Any] = {"ticket": ticket, "secret_name": name}
-        if self.config.store_alias:
-            payload["store"] = self.config.store_alias
-        response = self.request("get_secret", payload)
+        payload = self._build_get_secret_payload(name)
+        try:
+            response = self.request("get_secret", payload)
+        except PermissionError:
+            ticket = self._refresh_ticket()
+            payload = {"ticket": ticket, "secret_name": name}
+            if self.config.store_alias:
+                payload["store"] = self.config.store_alias
+            response = self.request("get_secret", payload)
         secret = response.get("secret")
         if not isinstance(secret, dict):
             raise ValueError("Missing secret in response")
         return secret
+
+    def _ensure_ticket(self) -> str:
+        """Ensure a client ticket exists, auto-initializing if needed."""
+        path = self.config.ticket_path
+        if path is not None and path.exists():
+            return self.load_ticket()
+        ticket_path = self.client_init(self.config.client_name)
+        self.config.ticket_path = ticket_path
+        return self.load_ticket()
+
+    def _build_get_secret_payload(self, name: str) -> dict[str, Any]:
+        """Build the get_secret payload with a valid ticket."""
+        ticket = self._ticket or self._ensure_ticket()
+        payload: dict[str, Any] = {"ticket": ticket, "secret_name": name}
+        if self.config.store_alias:
+            payload["store"] = self.config.store_alias
+        return payload
+
+    def _refresh_ticket(self) -> str:
+        """Re-initialize a ticket after an unauthorized response."""
+        self._ticket = None
+        ticket_path = self.client_init(self.config.client_name)
+        self.config.ticket_path = ticket_path
+        return self.load_ticket()
 
     def request(self, op: str, payload: dict[str, Any]) -> dict[str, object]:
         """Send a request and return the response payload."""

@@ -77,7 +77,7 @@ Two related concepts:
 - **Client session ticket**: a per-client bearer token used to authorize requests while the daemon remains unlocked.
 
 MVP semantics:
-- Unlocking via `ccache unlock --ttl <duration> --secrets <names>` sets the daemon to an unlocked
+- Unlocking via the Python SDK (or a future CLI) sets the daemon to an unlocked
   state for the TTL duration and populates the cache with the requested secrets only.
 - During unlocked state, clients can repeatedly connect (including after restarts), present valid tickets, and request secrets.
 - On TTL expiry, the session ends and requests must be rejected. The daemon may
@@ -95,7 +95,7 @@ Ticket lifetime:
 - A separate ticket TTL is an allowed extension but not required for MVP.
 
 Ticket generation:
-- Tickets are created explicitly via `ccache client init <client_name>`.
+- Tickets are created explicitly via the SDK `client_init(client_name)` (CLI optional later).
 - Tickets are stored as 0600 files in a per-client location.
 
 Ticket format and storage details are deferred to a future spec (TBD).
