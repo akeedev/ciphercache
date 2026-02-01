@@ -1,4 +1,6 @@
-"""IPC request handling and dispatch for ciphercache."""
+"""SPDX-License-Identifier: Apache-2.0
+IPC request handling and dispatch for ciphercache.
+"""
 
 from __future__ import annotations
 

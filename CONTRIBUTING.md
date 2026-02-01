@@ -24,3 +24,7 @@ Thanks for your interest in contributing!
 
 - Explain the motivation and what changed.
 - Add or update tests when behavior changes.
+
+## Development note
+
+AI tools may be used to assist development. All changes are reviewed by maintainers.

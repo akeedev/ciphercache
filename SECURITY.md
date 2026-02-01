@@ -1,5 +1,6 @@
 # Security Policy
 
+
 ## Reporting a vulnerability
 
 If you believe you have found a security vulnerability, please report it

@@ -68,7 +68,8 @@ Protocol framing decision (MVP):
 
 ## Discovery
 - Primary discovery: a fixed socket path known to both daemon and clients.
-- Optional secondary discovery: daemon writes `agent.json` (0600) with metadata (socket path, PID, version) to support debugging and future multi-profile scenarios.
+- Secondary discovery: daemon writes `agent.json` (0600) with metadata (socket path, PID, version)
+  to support debugging and future multi-profile scenarios. No secrets are stored in this file.
 
 Exact paths are defined in a follow-up spec to keep this doc stable.
 
@@ -101,7 +102,7 @@ Ticket generation:
 Ticket format and storage details belong in `spec/030-session-tickets.md`.
 
 Default data directory (macOS):
-- `~/Library/Application Support/ciphercached` (tickets, `agent.json`, socket metadata)
+- `~/Library/Application Support/ciphercache` (tickets, `agent.json`, socket metadata)
 
 ## Access Control Layers (MVP)
 MVP implements layers 0–2:

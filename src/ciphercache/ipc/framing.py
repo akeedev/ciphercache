@@ -1,4 +1,6 @@
-"""Length-prefixed JSON framing helpers for the IPC protocol."""
+"""SPDX-License-Identifier: Apache-2.0
+Length-prefixed JSON framing helpers for the IPC protocol.
+"""
 
 from __future__ import annotations
 

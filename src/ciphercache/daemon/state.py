@@ -1,4 +1,6 @@
-"""Daemon state and configuration for ciphercache."""
+"""SPDX-License-Identifier: Apache-2.0
+Daemon state and configuration for ciphercache.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +17,22 @@ class DaemonConfig:
 
     data_dir: Path
     store_alias_default: str = "default"
+    socket_path: Path | None = None
+    expected_uid: int | None = None
+    expected_gid: int | None = None
+    max_frame_bytes: int = 1_000_000
+    read_timeout_seconds: float = 5.0
+    write_timeout_seconds: float = 5.0
+    write_agent_metadata: bool = True
+
+    def __post_init__(self) -> None:
+        """Populate derived defaults for socket and expected credentials."""
+        if self.socket_path is None:
+            self.socket_path = self.data_dir / "ciphercached.sock"
+        if self.expected_uid is None:
+            self.expected_uid = os.getuid()
+        if self.expected_gid is None:
+            self.expected_gid = os.getgid()
 
 
 @dataclass(slots=True)
