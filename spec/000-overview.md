@@ -76,8 +76,8 @@ long-lived process environments.
 1. **Client software onboarding (one-time):**
    - Create a per-client-software ticket file (file mode 0600) via `ccache client init <client_name>`.
 2. **Session start (once per dev session/day):**
-   - Unlock the store via `ccache unlock --ttl <duration>`.
-   - `ciphercached` reads secrets from the store and populates an in-memory cache.
+   - Unlock the store via `ccache unlock --ttl <duration> --secrets <names>`.
+   - `ciphercached` reads only the requested secrets from the store and populates an in-memory cache.
 3. **Normal operation (frequent):**
    - Clients connect via Unix domain socket, present ticket, and request secrets by name.
    - Clients may restart repeatedly without additional store unlocking, until TTL expires.

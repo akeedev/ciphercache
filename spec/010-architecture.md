@@ -79,7 +79,8 @@ Two related concepts:
 - **Client session ticket**: a per-client bearer token used to authorize requests while the daemon remains unlocked.
 
 MVP semantics:
-- Unlocking via `ccache unlock --ttl <duration>` sets the daemon to an unlocked state for the TTL duration.
+- Unlocking via `ccache unlock --ttl <duration> --secrets <names>` sets the daemon to an unlocked
+  state for the TTL duration and populates the cache with the requested secrets only.
 - During unlocked state, clients can repeatedly connect (including after restarts), present valid tickets, and request secrets.
 - On TTL expiry, the session ends and requests must be rejected. The daemon may
   transition to locked state lazily (on the next request) and then wipe cache.
@@ -139,7 +140,7 @@ Layer 3 (Keychain-backed client credentials) is explicitly deferred to a future 
 The mapping from store entries to secret names and JSON payloads is specified in `spec/040-store-keepassxc.md`.
 
 ## Cache and Crypto (In-Memory)
-- `ciphercached` caches secret values in memory to avoid repeated store access during a session.
+- `ciphercached` caches only the secrets requested at `unlock` to avoid repeated store access during a session.
 - Cache is protected with a per-unlock ephemeral **Session Master Key**.
 - Cache entries are stored as ciphertext blobs; decrypted only briefly per request.
 - Assumption: secrets are small (passwords, API keys, tokens) and few in typical developer use,

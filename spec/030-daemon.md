@@ -30,6 +30,8 @@ or crypto internals.
   - Layer 1: peer UID/GID validation (OS-level).
   - Layer 2: ticket validation (handled in IPC logic).
 - Manage daemon lifecycle: startup, graceful shutdown, lock on exit.
+- Only `unlock` initiates store access and user interaction; `get_secret` never triggers unlock.
+- Unlock requests include an explicit list of secret names to fetch and cache.
 
 ## Process Model
 - Single process with a single socket listener.
@@ -68,6 +70,7 @@ or crypto internals.
 - TTL expiry is enforced lazily (on request).
 - Requests larger than the maximum frame size are rejected.
 - Connections that exceed read/write timeouts are closed.
+- `get_secret` returns `locked` if the daemon is locked; it does not initiate unlock.
 
 ## Access Control (MVP)
 - **Layer 0:** socket path is in an owner-only directory.

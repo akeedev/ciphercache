@@ -60,13 +60,16 @@ Response:
 Request payload:
 ```
 {
-  "ttl": "5s | 1h | 3d | 1h 30m | infinity"
+  "ttl": "5s | 1h | 3d | 1h 30m | infinity",
+  "secrets": ["service/api", "service/db"]
 }
 ```
 Notes:
 - Store selection is out-of-band to IPC (CLI/daemon configuration) and uses a store alias.
 - TTL expiry is enforced lazily: after expiry, the next request must be rejected (typically
   with `locked`), and the daemon may transition to locked state at that time.
+- `secrets` is the explicit allowlist to fetch and cache during unlock. If omitted,
+  the daemon may use a default policy (MVP: reject or treat as empty).
 
 ### `lock`
 Request payload: empty object.
@@ -108,6 +111,7 @@ Notes:
 - If omitted, the daemon uses the single active store (MVP default).
 - Rationale: aliases keep the IPC and SDK stable while enabling multiple stores later without
   exposing filesystem paths to clients.
+- `get_secret` must not trigger store unlock; if the daemon is locked, it returns `locked`.
 Response payload:
 ```
 {
