@@ -67,6 +67,8 @@ def test_get_secret_expired_ttl_returns_locked(tmp_path: Path) -> None:
     }
     response = handle_request(state, request)
     assert response["payload"]["code"] == ERROR_LOCKED
+    assert state.secrets == {}
+    assert state.tickets == set()
 
 
 @pytest.mark.parametrize("payload", [{"ttl": ""}, {"ttl": "1w"}, {"ttl": 10}])

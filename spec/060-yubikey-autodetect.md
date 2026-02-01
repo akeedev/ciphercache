@@ -19,7 +19,7 @@ Provide an optional YubiKey autodetection mechanism for KeePassXC unlocks, using
 
 ## Responsibilities
 - Provide a small utility module for YubiKey autodetect.
-- Expose an API for the daemon and SDK to request autodetection.
+- Expose an API for the daemon (and store integration) to request autodetection.
 - Map `--yubikey auto` (or `autodetect`) to autodetection in the daemon runner.
 
 ## Interface (planned)

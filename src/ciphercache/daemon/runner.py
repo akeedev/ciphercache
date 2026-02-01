@@ -79,7 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--yubikey",
         type=str,
-        help="YubiKey slot[:serial] (e.g., 1:23753626) or 'auto'/'autodetect' to autodetect.",
+        help="YubiKey slot[:serial] (e.g., 1:12345678) or 'auto'/'autodetect' to autodetect.",
     )
     parser.add_argument(
         "--no-password",

@@ -118,6 +118,7 @@ Notes:
 - Rationale: aliases keep the IPC and SDK stable while enabling multiple stores later without
   exposing filesystem paths to clients.
 - `get_secret` must not trigger store unlock; if the daemon is locked, it returns `locked`.
+- TTL expiry is enforced on each request; expired sessions return `locked` and clear cache/tickets.
 Response payload:
 ```
 {

@@ -134,6 +134,9 @@ class DaemonState:
 
     def get_secret(self, store_alias: str, secret_name: str) -> dict[str, object] | None:
         """Return a cached secret dict for a store alias and name."""
+        self.expire_if_needed()
+        if self.locked:
+            return None
         if secret_name not in self.allowed_secrets:
             return None
         return self.secrets.get(store_alias, {}).get(secret_name)

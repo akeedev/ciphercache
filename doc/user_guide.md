@@ -16,7 +16,8 @@ print(secret["api_key"])
 client.close_store()
 ```
 Note: unlock may take time due to password/YubiKey prompts; adjust
-`unlock_timeout_seconds` if needed.
+`unlock_timeout_seconds` if needed. TTL expiry is enforced on each request and
+locks the daemon, clearing cached secrets.
 
 ## Installing
 
@@ -46,7 +47,7 @@ uv run python scripts/run_daemon.py
 ```bash
 uv run python scripts/run_daemon.py \
   --db-path testdata/demopasswords.kdbx \
-  --yubikey 1:23753626 \
+  --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
 
@@ -58,7 +59,7 @@ uv run python scripts/run_daemon.py \
   --unlock-all-on-start \
   --unlock-ttl 1h \
   --db-path testdata/demopasswords.kdbx \
-  --yubikey 1:23753626 \
+  --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
 

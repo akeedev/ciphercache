@@ -129,11 +129,11 @@ def test_run_ykman_list_parses_serial_line(monkeypatch: pytest.MonkeyPatch) -> N
     from ciphercache import yubikey
 
     class _Result:
-        stdout = "YubiKey 5C Nano (5.4.3) [OTP+FIDO+CCID] Serial: 23753626\\n"
+        stdout = "YubiKey 5C Nano (5.4.3) [OTP+FIDO+CCID] Serial: 12345678\\n"
 
     def _fake_run(*_args: object, **_kwargs: object) -> _Result:
         return _Result()
 
     monkeypatch.setattr(yubikey.subprocess, "run", _fake_run)
     result = yubikey._run_ykman_list(Path("/usr/local/bin/ykman"))
-    assert result.serials == ["23753626"]
+    assert result.serials == ["12345678"]

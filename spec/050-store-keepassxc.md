@@ -53,7 +53,7 @@ Store configuration is provided via `DaemonConfig` or a dedicated store config a
 is fixed at daemon startup (clients do not select database paths in MVP):
 - `database_path: Path`
 - `key_file_path: Path | None`
-- `yubikey_slot: str | None` (e.g., `"1"` or `"1:23753626"`)
+- `yubikey_slot: str | None` (e.g., `"1"` or `"1:12345678"`)
 - `yubikey_slot` may be `"auto"` to use YubiKey autodetect (see `spec/060-yubikey-autodetect.md`).
 - `no_password: bool` (default `False`)
 - `keepassxc_cli_path: Path | None`

@@ -146,8 +146,8 @@ Configuration is provided via a `DaemonConfig` structure:
 - A valid `ping` request yields `{"ok": true}` response.
 - Invalid frames yield `invalid_request`.
 - Requests larger than the max frame size are rejected.
-- When TTL has expired, any request is rejected with `locked`, and the daemon
-  transitions to locked state (secrets/tickets cleared).
+- When TTL has expired, any request (including `get_secret`) is rejected with `locked`,
+  and the daemon transitions to locked state (secrets/tickets cleared).
 - `status` reflects locked/unlocked and TTL remaining accurately.
 - On SIGTERM/SIGINT, daemon locks and removes socket file.
 - `agent.json` is written on startup (when enabled) and removed on shutdown.

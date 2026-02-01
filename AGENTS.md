@@ -33,6 +33,8 @@ This is a general, non-project specific set of coding guidelines.
 - Do not introduce new dependencies unless necessary.
 - When you need libraries, explain to me and ask me what to use
 - Never commit secrets to version control
+- Avoid exposing sensitive identifiers (e.g., security hardware IDs, serials, account IDs) in docs, code, tests, or logs.
+- Always warn if you notice personal or possibly sensitive information that might be committed (names, emails, device IDs, hostnames, paths, tokens, credentials, internal URLs), and propose safe placeholders before writing or committing.
 - Write code for readability and maintainability; aim for clarity and a pleasant reading experience.
 - Preserve and update project legal notices (LICENSE/NOTICE/README/CONTRIBUTING) when changes affect them.
 - Maintain documentation in `doc/` for user-facing changes (overview + user guide + MVP checklist).
@@ -88,10 +90,9 @@ This is a general, non-project specific set of coding guidelines.
   - "AS IS / use at own risk" disclaimer
   - High-level module overview (classes/functions and their relationships)
   - Version metadata block (version, date, author, repository)
-- Each public class and public function has a brief docstring.
-- Every function and every class (public or private) must have at least a brief docstring.
-- Important classes/functions, especially those used across modules, should include more detailed
-  docstrings (purpose, inputs/outputs, and any important side effects).
+- Public classes and public functions must have docstrings that explain purpose, usage, parameters,
+  return values, and important side effects.
+- Private classes/functions must have at least a brief docstring (one or two sentences).
 - Add brief comments for non-obvious constants, OS-specific terminology, or portability fallbacks.
 - For dataclasses, add brief inline comments for non-obvious fields or describe them in the class docstring.
 - Use doctests for small, pure functions where examples add clarity; avoid doctests for I/O,
@@ -112,7 +113,7 @@ This is a general, non-project specific set of coding guidelines.
 ## Notebooks
 - For using functionality interactively we will add demonstration Jupyter notebooks.
 - At least create one demo notebook for each feature file in $PROJECT_DIR$/notebooks
-- Name notebooks according to the feature spec file, e.g. spec/010-foo.md -> tests/demo_010_foo.ipynb
+- Name notebooks according to the feature spec file, e.g. spec/010-foo.md -> notebooks/demo_010_foo.ipynb
 - The first cell in a notebook should be a text cell containing a title as heading and a short description of the feature 
 - In the second cell, notebooks should activate IPython's autoreload extension and import all relevant modules.
 - Notebooks should be divided into code cells that group functionality in a useful manner and order, often code cells will build up on previous ones. 

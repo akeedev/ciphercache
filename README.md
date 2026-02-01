@@ -1,9 +1,13 @@
 # ciphercache
 
 **ciphercache** is a locally running **secret agent daemon** that unlocks
-requested secrets from a secure store (initially: a KeePassXC database) and then serves those secrets from an **in-memory cache** for the configured TTL. New secrets require a new unlock request.
+requested secrets from a secure store (initially: a KeePassXC database) and then serves those secrets from an **in-memory cache** for the configured TTL. 
 
-Client software can be restarted frequently during development and still retrieve secrets as long as a **session ticket** and **TTL (Time To Live)** remain valid. The primary transport is **IPC (Inter-Process Communication)** via **Unix domain sockets**. 
+Client software can be restarted frequently during development and still retrieve secrets as long as a **session ticket** and **TTL (Time To Live)** remain valid. TTL expiry is enforced on each request; expired sessions lock the daemon and clear cached secrets. The primary transport is **IPC (Inter-Process Communication)** via **Unix domain sockets**. 
+
+The objective for creating this software was to protect secrets from accidental exposure in source control which is especially important when 
+working with AI agents. A secondary objective was to explore a spec-driven
+development approach with AI (OpenAI codex was used in Jetbrains Pycharm)
 
 Optionally, we might later add a **TCP listener with mTLS (mutual TLS, i.e., TLS with client certificate authentication)**.
 
@@ -66,7 +70,7 @@ Start the daemon with KeePassXC CLI config:
 ```bash
 uv run python scripts/run_daemon.py \
   --db-path testdata/demopasswords.kdbx \
-  --yubikey 1:23753626 \
+  --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
 
@@ -77,7 +81,7 @@ uv run python scripts/run_daemon.py \
   --unlock-all-on-start \
   --unlock-ttl 1h \
   --db-path testdata/demopasswords.kdbx \
-  --yubikey 1:23753626 \
+  --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
 
