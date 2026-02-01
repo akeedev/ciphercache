@@ -21,6 +21,8 @@ import argparse
 from pathlib import Path
 from typing import Iterable
 
+import logging
+
 from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
 
 
@@ -54,6 +56,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Seed requested secrets with demo values after unlock.",
     )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging level (default: INFO).",
+    )
     return parser.parse_args()
 
 
@@ -67,6 +74,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     """Run the daemon with optional demo behavior."""
     _ = argv
     args = _parse_args()
+    logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
     config = DaemonConfig(
         data_dir=args.data_dir,
         write_agent_metadata=not args.no_agent_metadata,

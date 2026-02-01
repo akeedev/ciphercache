@@ -82,6 +82,8 @@ or crypto internals.
 - Log start/stop, socket bind failures, and protocol errors.
 - Never log secrets or full payloads.
 - Ticket values must not be logged.
+- Log a brief summary per request (op + payload keys). When present, log client_name.
+- Default log level for the daemon runner is INFO and should be configurable.
 
 ## Agent Metadata (`agent.json`)
 Written at startup and removed on shutdown. Intended for debugging and discovery.

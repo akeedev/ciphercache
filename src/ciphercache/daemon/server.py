@@ -23,6 +23,7 @@ Version metadata (update when releasing):
 from __future__ import annotations
 
 import json
+import logging
 import os
 import signal
 import socket
@@ -39,6 +40,7 @@ from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, handle_request
 
 # Linux SO_PEERCRED for getsockopt - for compatibility; macOS uses getpeereid instead.
 _SO_PEERCRED = 0x11
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -53,6 +55,7 @@ class UnixSocketServer:
 
     def setup(self) -> None:
         """Prepare the data directory, write metadata, and bind the socket."""
+        _LOGGER.info("Daemon setup started")
         data_dir = self.config.data_dir
         try:
             data_dir.mkdir(parents=True, exist_ok=True)
@@ -86,6 +89,7 @@ class UnixSocketServer:
             self.listener = listener
         except OSError as exc:
             raise OSError(f"Failed to bind Unix socket: {socket_path}") from exc
+        _LOGGER.info("Daemon listening on %s", socket_path)
 
     def serve_forever(self) -> None:
         """Accept and handle connections until interrupted."""
@@ -102,6 +106,7 @@ class UnixSocketServer:
                     if not self._running:
                         break
                     raise
+                _LOGGER.info("Accepted connection")
                 try:
                     self._handle_connection(conn)
                 finally:
@@ -114,6 +119,7 @@ class UnixSocketServer:
 
     def close(self) -> None:
         """Close the listener and remove socket and metadata files."""
+        _LOGGER.info("Daemon shutdown started")
         self._running = False
         if self.listener is not None:
             self.listener.close()
@@ -125,6 +131,7 @@ class UnixSocketServer:
             self.agent_metadata_path.unlink()
         self.agent_metadata_path = None
         self.state.lock()
+        _LOGGER.info("Daemon shutdown complete")
 
     def _handle_connection(self, conn: socket.socket) -> None:
         """Validate peer credentials, read a frame, and respond."""
@@ -148,6 +155,7 @@ class UnixSocketServer:
 
         try:
             message = decode_single_frame(frame)
+            _LOGGER.info("Request %s", _summarize_request(message))
             response = handle_request(self.state, message)
         except Exception as exc:
             response = _error_envelope(ERROR_INVALID_REQUEST, f"Invalid frame: {exc}")
@@ -158,6 +166,7 @@ class UnixSocketServer:
     def _handle_signal(self, signum: int, _frame: object | None) -> None:
         """Stop the accept loop and close the listener on signals."""
         _ = signum
+        _LOGGER.info("Signal received, stopping daemon")
         self._running = False
         if self.listener is not None:
             self.listener.close()
@@ -252,3 +261,19 @@ def _restore_signal_handlers(previous: dict[int, Any]) -> None:
     """Restore previously installed signal handlers."""
     for signum, handler in previous.items():
         signal.signal(signum, handler)
+
+
+def _summarize_request(message: dict[str, Any]) -> str:
+    """Return a safe, brief summary of a request envelope."""
+    op = message.get("op")
+    message_id = message.get("id")
+    payload = message.get("payload", {})
+    keys: list[str] = []
+    client_name = None
+    if isinstance(payload, dict):
+        keys = sorted(str(key) for key in payload.keys())
+        client_name = payload.get("client_name")
+    summary = f"op={op!r} id={message_id!r} keys={keys!r}"
+    if isinstance(client_name, str) and client_name:
+        summary += f" client_name={client_name!r}"
+    return summary

@@ -31,6 +31,7 @@ This is a general, non-project specific set of coding guidelines.
 - Do not introduce new dependencies unless necessary.
 - When you need libraries, explain to me and ask me what to use
 - Never commit secrets to version control
+- Write code for readability and maintainability; aim for clarity and a pleasant reading experience.
 - Preserve and update project legal notices (LICENSE/NOTICE/README/CONTRIBUTING) when changes affect them.
 - The project will be open source, so we can use open source libraries.
 - Eventually, the project will be shared on github.
@@ -69,6 +70,7 @@ This is a general, non-project specific set of coding guidelines.
 - Prefer context managers (`with`) for short-lived resources; keep long-lived sockets/files
   as explicit lifecycle-managed objects when appropriate.
 - Logging: use existing logging setup; do not add print debugging.
+- Logging: record notable lifecycle events and actions with standard Python logging.
 - Follow PEP 8 with 120 character line limit
 - Use double quotes for Python strings
 - Prefer f-strings for string formatting
