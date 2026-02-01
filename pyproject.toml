@@ -4,10 +4,18 @@ version = "0.1.0"
 description = "a local daemon providing secrets from a safe store"
 requires-python = ">=3.12.0"
 license = {file = "LICENSE"}
+readme = "README.md"
+authors = [{name = "@drakee"}]
+keywords = ["secrets", "daemon", "keepassxc", "ipc"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: MacOS",
+]
+urls = {Homepage = "https://github.com/drakee/ciphercache"}
 dependencies = [
-    "ipykernel>=7.1.0",
-    "mypy>=1.11",
-    "ruff>=0.14.14",
 ]
 
 [tool.setuptools]
@@ -41,4 +49,10 @@ pythonpath = ["src"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ipykernel>=7.1.0",
+    "mypy>=1.11",
+    "ruff>=0.14.14",
 ]
+
+[project.scripts]
+ciphercached = "ciphercache.daemon.runner:main"

@@ -19,6 +19,7 @@ Version metadata (update when releasing):
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
@@ -147,6 +148,9 @@ def _split_tags(text: str) -> list[str]:
 
 def _find_keepassxc_cli(search_roots: Iterable[Path]) -> Path | None:
     """Find keepassxc-cli in standard macOS app bundles."""
+    path_cli = _find_keepassxc_in_path()
+    if path_cli is not None:
+        return path_cli
     candidates: list[Path] = []
     for root in search_roots:
         if not root.exists():
@@ -158,6 +162,18 @@ def _find_keepassxc_cli(search_roots: Iterable[Path]) -> Path | None:
     if not candidates:
         return None
     return _prefer_highest_version(candidates)
+
+
+def _find_keepassxc_in_path() -> Path | None:
+    """Find keepassxc-cli in PATH."""
+    path_env = os.environ.get("PATH", "")
+    for folder in path_env.split(os.pathsep):
+        if not folder:
+            continue
+        candidate = Path(folder) / "keepassxc-cli"
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def _prefer_highest_version(paths: list[Path]) -> Path:

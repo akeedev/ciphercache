@@ -1,7 +1,7 @@
 # ciphercache Architecture (010)
 
 ## Overview
-`ciphercache` consists of a local daemon (`ciphercached`), a CLI command (`ccache`), and a Python client SDK. The daemon is the only component that reads from the external secret store and the only component that holds cached secret material. Clients fetch secrets on demand over local IPC.
+`ciphercache` consists of a local daemon (`ciphercached`) and a Python client SDK (CLI is a future optional wrapper). The daemon is the only component that reads from the external secret store and the only component that holds cached secret material. Clients fetch secrets on demand over local IPC.
 
 The architecture is designed to:
 - minimize developer friction (unlock explicitly with a secret list; cache for TTL)
@@ -29,11 +29,9 @@ Internal submodules (conceptual):
 - `policy`: optional allowlist mapping (client -> secret names), MVP may start with “allow all” but the interface should exist
 
 
-### 2) CLI: `ccache`
+### 2) (Future) CLI: `ccache`
 Responsibilities:
-- Control daemon functionality via the same IPC API used by clients:
-  - unlock, lock, status
-  - initialize client ticket files
+- Control daemon functionality via the same IPC API used by clients.
 - Provide a stable UX surface for operators/developers.
 - Avoid printing secret values by default (debug-only commands may exist and should be gated).
 
@@ -100,7 +98,7 @@ Ticket generation:
 - Tickets are created explicitly via `ccache client init <client_name>`.
 - Tickets are stored as 0600 files in a per-client location.
 
-Ticket format and storage details belong in `spec/030-session-tickets.md`.
+Ticket format and storage details are deferred to a future spec (TBD).
 
 Default data directory (macOS):
 - `~/Library/Application Support/ciphercache` (tickets, `agent.json`, socket metadata)
@@ -149,7 +147,7 @@ The mapping from store entries to secret names and JSON payloads is specified in
 Warning: In-memory encryption primarily reduces accidental exposure (e.g., crash dumps).
 It is not designed to defend against active, same-user code execution while unlocked.
 
-Cryptographic primitives (AEAD choice, key derivation, wipe strategy) are specified in `spec/050-cache-and-crypto.md`.
+Cryptographic primitives (AEAD choice, key derivation, wipe strategy) are deferred to a future spec (TBD).
 
 ## Policy and Authorization Model (Hook for MVP)
 - Architecture includes a `policy` abstraction:
@@ -159,7 +157,7 @@ Cryptographic primitives (AEAD choice, key derivation, wipe strategy) are specif
   - per-client allowlists
   - future “high value secret requires extra presence” rules
 
-Policy definition is specified in `spec/070-policy.md`.
+Policy definition is deferred to a future spec (TBD).
 
 ## Observability
 - `ccache status` provides:

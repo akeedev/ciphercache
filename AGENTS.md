@@ -35,6 +35,9 @@ This is a general, non-project specific set of coding guidelines.
 - Never commit secrets to version control
 - Write code for readability and maintainability; aim for clarity and a pleasant reading experience.
 - Preserve and update project legal notices (LICENSE/NOTICE/README/CONTRIBUTING) when changes affect them.
+- Maintain documentation in `doc/` for user-facing changes (overview + user guide + MVP checklist).
+- Keep runtime dependencies minimal; move dev tools to `dependency-groups.dev`.
+- When updating install docs, include both `pip` and `uv pip` commands.
 - The project will be open source, so we can use open source libraries.
 - Eventually, the project will be shared on github.
 - Primary project language is Python, version >= 3.12 

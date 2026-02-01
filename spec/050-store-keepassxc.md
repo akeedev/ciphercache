@@ -57,8 +57,9 @@ Store configuration is provided via `DaemonConfig` or a dedicated store config:
 
 CLI discovery (MVP):
 - If `keepassxc_cli_path` is set, use it.
-- Otherwise, search for `KeePassXC*.app/Contents/MacOS/keepassxc-cli` under `/Applications`,
-  prefer the highest version if multiple are found.
+- Otherwise, search `PATH` for `keepassxc-cli`.
+- If not found in `PATH`, search for `KeePassXC*.app/Contents/MacOS/keepassxc-cli` under `/Applications`,
+  preferring the highest version if multiple are found.
 
 ## Mapping: KeePassXC Entry → Secret Name
 MVP mapping:

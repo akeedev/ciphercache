@@ -47,6 +47,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip calling unlock before get_secret.",
     )
+    parser.add_argument(
+        "--unlock-all-on-start",
+        action="store_true",
+        help="Assume daemon was started with unlock-all-on-start.",
+    )
     return parser.parse_args()
 
 
@@ -68,7 +73,10 @@ def main(argv: Iterable[str] | None = None) -> None:
     print("Status:", client.status())
 
     if not args.skip_unlock:
-        print("Unlock:", client.unlock(args.ttl, secrets))
+        if args.unlock_all_on_start:
+            print("Skipping unlock (daemon already unlocked all secrets)")
+        else:
+            print("Unlock:", client.unlock(args.ttl, secrets))
 
     print("Secret:", client.get_secret(secrets[0]))
 

@@ -10,7 +10,32 @@ Optionally, we might later add a **TCP listener with mTLS (mutual TLS, i.e., TLS
 ## Example quickstart
 
 ```bash
-uv run python main.py
+uv run python scripts/run_daemon.py --demo
+```
+
+## Getting started
+
+See the full user guide in `doc/user_guide.md`.
+
+## Installing
+
+Editable install for development:
+
+```bash
+pip install -e .
+```
+
+Or using uv:
+
+```bash
+uv pip install -e .
+```
+
+Install from a built wheel:
+
+```bash
+uv build
+pip install dist/ciphercache-*.whl
 ```
 
 ## SDK usage
@@ -22,11 +47,33 @@ config = ClientConfig()
 client = Client(config=config)
 
 # Unlock the daemon and cache the required secrets.
+# Requires the daemon to run in demo mode or with KeePassXC configuration.
 client.unlock("1h", ["service/api"])
 
 # Fetch a cached secret.
 secret = client.get_secret("service/api")
 print(secret["api_key"])
+```
+
+## KeePassXC integration (daemon)
+
+Start the daemon with KeePassXC CLI config:
+
+```bash
+uv run python scripts/run_daemon.py \
+  --db-path testdata/demopasswords.kdbx \
+  --yubikey 1:23753626 \
+  --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
+```
+
+Unlock-all on startup (caches all entries at start):
+
+```bash
+uv run python scripts/run_daemon.py \
+  --unlock-all-on-start \
+  --db-path testdata/demopasswords.kdbx \
+  --yubikey 1:23753626 \
+  --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
 
 ## Example tests
@@ -43,6 +90,12 @@ uv run pytest
 - `data/` data files
 - `testdata/` test data
 - `doc/` documentation
+
+## Documentation
+
+- `doc/overview.md`
+- `doc/user_guide.md`
+- `doc/mvp_checklist.md`
 
 ## PyCharm run configurations
 

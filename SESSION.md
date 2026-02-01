@@ -1,29 +1,37 @@
 # SESSION.md
 
 ## Session date
-- 2026-01-31
+- 2026-02-01
 
 ## Current status
-- Working branch: `feat/020-ipc-protocol`
-- IPC protocol MVP implemented with framing, handler, daemon state skeleton, and specs updated.
-- Additional unit tests and invariant tests added.
-- Notebook demo updated to use secure temp dir.
-- AGENTS.md updated with testing/docstring/doctest rules.
+- Working branch: `feat/050-store-keepassxc`
+- IPC protocol + daemon + SDK implemented and tested.
+- KeePassXC integration (export XML parsing) implemented and wired to daemon unlock.
+- Demo notebooks added for IPC, daemon, SDK, and KeePassXC store.
+- Documentation added under `doc/` including user guide and MVP checklist.
+- Performed consistency and readiness pass; added missing tests and documentation updates.
 
 ## Key decisions (specs)
 - IPC framing: length-prefixed JSON.
 - Message envelope v0 with request/response/error.
-- Tickets inline per `get_secret`.
-- Store identity is via alias; MVP supports a single active store; alias enables future multi-store.
+- Tickets are per client; soft identity only.
+- Unlock requires explicit secret list; `get_secret` never triggers unlock.
+- Unlock-all on daemon startup is optional (caches all entries).
+- KeePassXC integration via `keepassxc-cli export` (XML in memory).
 - TTL format supports `s|m|h|d`, combined tokens, and `infinity`.
 
 ## Files changed (high level)
-- Specs: `spec/000-overview.md`, `spec/010-architecture.md`, `spec/020-ipc-protocol.md`
-- IPC code: `src/ciphercache/ipc/*`, `src/ciphercache/daemon/state.py`, `src/ciphercache/ttl.py`
-- Tests: `tests/test_020_ipc_protocol.py`, `tests/test_ttl.py`, `tests/test_ipc_framing.py`,
-  `tests/test_ipc_handler.py`, `tests/test_010_arch_invariants.py`
-- Notebook: `notebooks/demo_020_ipc_protocol.ipynb`
-- Guidelines: `AGENTS.md`
+- Specs: `spec/000-overview.md`, `spec/010-architecture.md`, `spec/020-ipc-protocol.md`,
+  `spec/030-daemon.md`, `spec/040-client-sdk.md`, `spec/050-store-keepassxc.md`
+- Daemon: `src/ciphercache/daemon/*`, `scripts/run_daemon.py`
+- SDK: `src/ciphercache/client.py`, `scripts/test_client.py`
+- Store: `src/ciphercache/store/*`
+- Tests: `tests/test_020_ipc_protocol.py`, `tests/test_ipc_handler.py`, `tests/test_030_daemon.py`,
+  `tests/test_040_client_sdk.py`, `tests/test_050_store_keepassxc.py`
+- Notebooks: `notebooks/demo_020_ipc_protocol.ipynb`, `notebooks/demo_030_daemon.ipynb`,
+  `notebooks/demo_040_client_sdk.ipynb`, `notebooks/demo_050_store_keepassxc.ipynb`
+- Docs: `doc/overview.md`, `doc/user_guide.md`, `doc/mvp_checklist.md`
+- Guidelines: `AGENTS.md`, `CONTRIBUTING.md`, `README.md`
 
 ## Tests run (all passing)
 - `uv run pytest -q`
@@ -32,18 +40,8 @@
 
 ## Git status snapshot
 - `git status -sb`:
-  - `## feat/020-ipc-protocol...origin/feat/020-ipc-protocol`
-  - ` M SESSION.md`
-
-## Recent commits
-- `567edf3` Specified IPC feature, coded and tested it, working version. Now in review.
-- `e3ea64e` Merge pull request #2 from akeedev/chore-template-cleanup
-- `545e63d` Clean project based on the AI code template. Will now begin with spec.
-- `7bcec5b` Merge pull request #1 from akeedev/chore-template-cleanup
-- `e9bf8ca` Clean project based on the AI code template. Will now begin with spec.
+  - `## feat/050-store-keepassxc`
 
 ## TODO next session
-- Ensure code review of current changes.
-- Decide on commit strategy and push/merge workflow.
-- Implement Unix domain socket server loop for `ciphercached` (next milestone).
-
+- Merge `feat/050-store-keepassxc` into `main`.
+- Decide on release/versioning cadence.

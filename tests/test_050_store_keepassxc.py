@@ -8,6 +8,7 @@ from ciphercache.store.keepassxc import (
     KeePassXCClient,
     KeePassXCConfig,
     KeePassXCParser,
+    _find_keepassxc_cli,
     _split_tags,
     _strip_to_xml,
     load_secrets,
@@ -73,3 +74,29 @@ def test_load_secrets_filters_requested(monkeypatch: pytest.MonkeyPatch) -> None
     secrets = load_secrets(config, ["demoentry1", "missing"])
     assert "demoentry1" in secrets
     assert "missing" not in secrets
+
+
+def test_find_keepassxc_cli_prefers_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prefer keepassxc-cli found in PATH."""
+    cli_dir = tmp_path / "bin"
+    cli_dir.mkdir(parents=True)
+    cli_path = cli_dir / "keepassxc-cli"
+    cli_path.write_text("", encoding="utf-8")
+    monkeypatch.setenv("PATH", str(cli_dir))
+    found = _find_keepassxc_cli([])
+    assert found == cli_path
+
+
+def test_find_keepassxc_cli_prefers_highest_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Choose the highest KeePassXC app version under search roots."""
+    monkeypatch.setenv("PATH", "")
+    root = tmp_path / "Applications"
+    paths = [
+        root / "KeePassXC_2.7.5.app" / "Contents" / "MacOS" / "keepassxc-cli",
+        root / "KeePassXC_2.7.6.app" / "Contents" / "MacOS" / "keepassxc-cli",
+    ]
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("", encoding="utf-8")
+    found = _find_keepassxc_cli([root])
+    assert found == paths[1]

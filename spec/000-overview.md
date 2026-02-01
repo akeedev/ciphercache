@@ -13,7 +13,7 @@ and access a single secret store (KeePassXC) for obtaining secrets.
 ## Naming
 - Project / repository: `ciphercache`
 - Daemon: `ciphercached`
-- CLI command: `ccache`
+- (Future) CLI command: `ccache`
 
 ## Problem Statement
 Common secret handling patterns (e.g., environment variables, dotfiles, ad-hoc encrypted 
@@ -52,7 +52,7 @@ long-lived process environments.
 - One external secret store integration: KeePassXC (exact integration details specified separately).
   MVP supports a single active store, but the design allows adding multiple stores later.
 - In-memory caching in the daemon, protected by encryption via an ephemeral session master key.
-- CLI commands to unlock/lock/status and to initialize client tickets.
+- (Future) Optional CLI commands to unlock/lock/status and initialize client tickets.
 
 
 ## Threat Model (MVP)
@@ -74,15 +74,15 @@ long-lived process environments.
 
 ## Conceptual Workflow
 1. **Client software onboarding (one-time):**
-   - Create a per-client-software ticket file (file mode 0600) via `ccache client init <client_name>`.
+   - Create a per-client-software ticket file (file mode 0600) via the SDK.
 2. **Session start (when secrets are needed):**
-   - Unlock the store via `ccache unlock --ttl <duration> --secrets <names>`.
+   - Unlock the store via the SDK with `ttl` and `secrets`.
    - `ciphercached` reads only the requested secrets from the store and populates an in-memory cache.
 3. **Normal operation (frequent):**
    - Clients connect via Unix domain socket, present ticket, and request secrets by name.
    - Clients may restart repeatedly without additional store unlocking, until TTL expires.
 4. **Session end:**
-   - TTL expiry or `ccache lock` ends the session. The daemon may invalidate tickets lazily
+   - TTL expiry or `lock` ends the session. The daemon may invalidate tickets lazily
      (on the next request) and then wipe cached secrets.
 
 
