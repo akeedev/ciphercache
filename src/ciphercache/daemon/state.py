@@ -26,6 +26,7 @@ class DaemonConfig:
     write_agent_metadata: bool = True
 
     def __post_init__(self) -> None:
+        """Populate derived defaults for socket and expected credentials."""
         if self.socket_path is None:
             self.socket_path = self.data_dir / "ciphercached.sock"
         if self.expected_uid is None:
