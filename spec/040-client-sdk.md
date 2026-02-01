@@ -93,7 +93,7 @@ If `agent.json` exists and is readable, the SDK should use its socket path.
 - `ciphercache.client.Client`
   - `ping() -> bool`
   - `status() -> Status`
-  - `unlock(ttl: str, secrets: list[str]) -> bool`
+  - `unlock(ttl: str, secrets: list[str]) -> bool` (secrets must be non-empty)
   - `lock() -> bool`
   - `get_secret(name: str) -> dict[str, object]`
   - `client_init(client_name: str) -> Path`
@@ -107,7 +107,7 @@ If `agent.json` exists and is readable, the SDK should use its socket path.
 - Each request uses a new socket connection (one request per connection).
 - Responses are decoded, typed, and returned or raised as exceptions.
 - `unlock` is called explicitly before `get_secret` to avoid unexpected store prompts.
-- `unlock` specifies the secret names to fetch and cache; new secrets require a new unlock.
+- `unlock` specifies a non-empty list of secret names to fetch and cache; new secrets require a new unlock.
 
 ## Acceptance Criteria (MVP)
 - SDK can connect to the daemon socket and perform `ping`.

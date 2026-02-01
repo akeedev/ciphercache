@@ -71,6 +71,7 @@ or crypto internals.
 - Requests larger than the maximum frame size are rejected.
 - Connections that exceed read/write timeouts are closed.
 - `get_secret` returns `locked` if the daemon is locked; it does not initiate unlock.
+- `unlock` requests must include a non-empty list of secrets to cache; otherwise `invalid_request`.
 
 ## Access Control (MVP)
 - **Layer 0:** socket path is in an owner-only directory.

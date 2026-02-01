@@ -25,8 +25,8 @@ long-lived process environments.
 ## Goals
 - Keep plaintext secrets separated from client programs and out of Git repos and source code.
 - Allow programs to retrieve secrets on demand while requiring little user interaction.
-- Provide a local daemon (`ciphercached`) that can be unlocked once per session and then serve 
-  secrets without reopening the secret store again by keeping them cached in memory.
+- Provide a local daemon (`ciphercached`) that can be unlocked with an explicit list of secrets
+  and then serve those secrets from an in-memory cache for the TTL.
 - Support frequent client restarts (typical during development) without forcing repeated store unlocks.
 - Use local IPC (Unix domain sockets) as the primary transport.
 - Store secrets as structured key-value objects addressable by name (conceptually JSON; in Python this is a dict).
@@ -75,7 +75,7 @@ long-lived process environments.
 ## Conceptual Workflow
 1. **Client software onboarding (one-time):**
    - Create a per-client-software ticket file (file mode 0600) via `ccache client init <client_name>`.
-2. **Session start (once per dev session/day):**
+2. **Session start (when secrets are needed):**
    - Unlock the store via `ccache unlock --ttl <duration> --secrets <names>`.
    - `ciphercached` reads only the requested secrets from the store and populates an in-memory cache.
 3. **Normal operation (frequent):**

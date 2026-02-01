@@ -45,6 +45,7 @@ class DaemonState:
         ttl_expiry: Monotonic timestamp for TTL expiry, or None for infinity.
         active_store_alias: Alias of the currently active store (MVP single store).
         secrets: In-memory secrets by store alias and secret name.
+        allowed_secrets: Secret names allowed for this unlock session.
         tickets: Active ticket tokens for authorization.
     """
 
@@ -53,12 +54,20 @@ class DaemonState:
     ttl_expiry: float | None = None  # Monotonic expiry timestamp; None for infinity.
     active_store_alias: str | None = None  # Active store alias for the session.
     secrets: dict[str, dict[str, dict[str, object]]] = field(default_factory=dict)  # Store -> name -> secret.
+    allowed_secrets: set[str] = field(default_factory=set)  # Allowed secret names for this unlock.
     tickets: set[str] = field(default_factory=set)  # Active ticket tokens.
 
-    def unlock(self, ttl_seconds: int | None, store_alias: str | None = None) -> None:
-        """Unlock the daemon and set the active store and TTL."""
+    def unlock(
+        self,
+        ttl_seconds: int | None,
+        secrets: list[str],
+        store_alias: str | None = None,
+    ) -> None:
+        """Unlock the daemon and set the active store, TTL, and allowed secrets."""
         self.locked = False
         self.active_store_alias = store_alias or self.config.store_alias_default
+        self.allowed_secrets = set(secrets)
+        self.secrets.clear()
         if ttl_seconds is None:
             self.ttl_expiry = None
         else:
@@ -69,6 +78,7 @@ class DaemonState:
         self.locked = True
         self.ttl_expiry = None
         self.secrets.clear()
+        self.allowed_secrets.clear()
         self.tickets.clear()
 
     def expire_if_needed(self) -> None:
@@ -111,4 +121,6 @@ class DaemonState:
 
     def get_secret(self, store_alias: str, secret_name: str) -> dict[str, object] | None:
         """Return a cached secret dict for a store alias and name."""
+        if secret_name not in self.allowed_secrets:
+            return None
         return self.secrets.get(store_alias, {}).get(secret_name)

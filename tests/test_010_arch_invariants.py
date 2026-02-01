@@ -17,7 +17,7 @@ def test_ticket_files_are_0600(tmp_path: Path) -> None:
 
 def test_lock_wipes_cached_secrets(tmp_path: Path) -> None:
     state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     state.secrets["default"] = {"service/api": {"api_key": "value"}}
     state.lock()
     assert state.secrets == {}
@@ -29,7 +29,7 @@ def test_tickets_invalid_when_locked(tmp_path: Path) -> None:
     token = ticket_path.read_text(encoding="utf-8")
     assert state.validate_ticket(token) is False
 
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     assert state.validate_ticket(token) is True
 
     state.lock()
@@ -38,19 +38,19 @@ def test_tickets_invalid_when_locked(tmp_path: Path) -> None:
 
 def test_lock_clears_tickets(tmp_path: Path) -> None:
     state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     ticket_path = state.issue_ticket("demo")
     token = ticket_path.read_text(encoding="utf-8")
     assert state.validate_ticket(token) is True
 
     state.lock()
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     assert state.validate_ticket(token) is False
 
 
 def test_expired_ttl_invalidates_tickets(tmp_path: Path) -> None:
     state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     ticket_path = state.issue_ticket("demo")
     token = ticket_path.read_text(encoding="utf-8")
     state.ttl_expiry = time.monotonic() - 1
@@ -61,5 +61,5 @@ def test_expired_ttl_invalidates_tickets(tmp_path: Path) -> None:
 
 def test_default_store_alias_set_on_unlock(tmp_path: Path) -> None:
     state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     assert state.active_store_alias == "default"

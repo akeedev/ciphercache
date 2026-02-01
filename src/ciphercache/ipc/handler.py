@@ -131,6 +131,19 @@ def _require_string(payload: dict[str, Any], key: str) -> str:
     return value
 
 
+def _require_string_list(payload: dict[str, Any], key: str) -> list[str]:
+    """Return a required list of non-empty strings from a payload."""
+    value = payload.get(key)
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"Missing or invalid '{key}'")
+    items: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            raise ValueError(f"Missing or invalid '{key}'")
+        items.append(item)
+    return items
+
+
 def _handle_ping(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle ping requests."""
     _ = state
@@ -149,8 +162,9 @@ def _handle_status(state: DaemonState, request: Envelope) -> dict[str, Any]:
 def _handle_unlock(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle unlock requests."""
     ttl_value = _require_string(request.payload, "ttl")
+    secret_names = _require_string_list(request.payload, "secrets")
     ttl_seconds = parse_ttl(ttl_value)
-    state.unlock(ttl_seconds)
+    state.unlock(ttl_seconds, secret_names)
     return _response(request, {"ok": True})
 
 

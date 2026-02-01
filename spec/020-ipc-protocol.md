@@ -68,8 +68,8 @@ Notes:
 - Store selection is out-of-band to IPC (CLI/daemon configuration) and uses a store alias.
 - TTL expiry is enforced lazily: after expiry, the next request must be rejected (typically
   with `locked`), and the daemon may transition to locked state at that time.
-- `secrets` is the explicit allowlist to fetch and cache during unlock. If omitted,
-  the daemon may use a default policy (MVP: reject or treat as empty).
+- `secrets` is the explicit allowlist to fetch and cache during unlock. It must be
+  a non-empty list of secret names; missing or empty lists are rejected.
 
 ### `lock`
 Request payload: empty object.

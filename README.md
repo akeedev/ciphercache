@@ -1,7 +1,7 @@
 # ciphercache
 
 **ciphercache** is a locally running **secret agent daemon** that unlocks
-secrets from a secure store (initially: a KeePassXC database) **once per session** and then serves secrets from an **in-memory cache** without reopening the store. 
+requested secrets from a secure store (initially: a KeePassXC database) and then serves those secrets from an **in-memory cache** for the configured TTL. New secrets require a new unlock request.
 
 Client software can be restarted frequently during development and still retrieve secrets as long as a **session ticket** and **TTL (Time To Live)** remain valid. The primary transport is **IPC (Inter-Process Communication)** via **Unix domain sockets**. 
 

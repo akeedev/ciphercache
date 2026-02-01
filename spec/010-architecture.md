@@ -4,7 +4,7 @@
 `ciphercache` consists of a local daemon (`ciphercached`), a CLI command (`ccache`), and a Python client SDK. The daemon is the only component that reads from the external secret store and the only component that holds cached secret material. Clients fetch secrets on demand over local IPC.
 
 The architecture is designed to:
-- minimize developer friction (unlock once per session)
+- minimize developer friction (unlock explicitly with a secret list; cache for TTL)
 - reduce secret leakage surfaces
 - remain simple and robust (OS primitives + minimal moving parts)
 - allow later extension (mTLS listener, stronger client identity) without refactoring core logic

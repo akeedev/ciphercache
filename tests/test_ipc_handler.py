@@ -50,7 +50,7 @@ def test_get_secret_locked_returns_locked(tmp_path: Path) -> None:
 def test_get_secret_expired_ttl_returns_locked(tmp_path: Path) -> None:
     config = DaemonConfig(data_dir=tmp_path)
     state = DaemonState(config=config)
-    state.unlock(60)
+    state.unlock(60, ["service/api"])
     state.secrets["default"] = {"service/api": {"api_key": "test"}}
     ticket_path = state.issue_ticket("demo")
     ticket = ticket_path.read_text(encoding="utf-8")
@@ -70,6 +70,7 @@ def test_get_secret_expired_ttl_returns_locked(tmp_path: Path) -> None:
 @pytest.mark.parametrize("payload", [{"ttl": ""}, {"ttl": "1w"}, {"ttl": 10}])
 
 def test_unlock_invalid_ttl(locked_state: DaemonState, payload: dict[str, object]) -> None:
+    payload["secrets"] = ["service/api"]
     request = {"version": "v0", "id": "1", "type": "request", "op": "unlock", "payload": payload}
     response = handle_request(locked_state, request)
     assert response["payload"]["code"] == ERROR_INVALID_REQUEST
@@ -83,7 +84,7 @@ def test_unlock_sets_state(tmp_path: Path) -> None:
         "id": "1",
         "type": "request",
         "op": "unlock",
-        "payload": {"ttl": "5s"},
+        "payload": {"ttl": "5s", "secrets": ["service/api"]},
     }
     response = handle_request(state, request)
     assert response["type"] == "response"
@@ -99,9 +100,17 @@ def test_unlock_infinity_sets_no_expiry(tmp_path: Path) -> None:
         "id": "1",
         "type": "request",
         "op": "unlock",
-        "payload": {"ttl": "infinity"},
+        "payload": {"ttl": "infinity", "secrets": ["service/api"]},
     }
     response = handle_request(state, request)
     assert response["type"] == "response"
     assert state.ttl_expiry is None
     assert state.ttl_remaining_seconds() > 0
+
+
+@pytest.mark.parametrize("payload", [{}, {"secrets": []}, {"secrets": [""]}, {"secrets": [123]}])
+def test_unlock_invalid_secrets(locked_state: DaemonState, payload: dict[str, object]) -> None:
+    payload["ttl"] = "5s"
+    request = {"version": "v0", "id": "1", "type": "request", "op": "unlock", "payload": payload}
+    response = handle_request(locked_state, request)
+    assert response["payload"]["code"] == ERROR_INVALID_REQUEST

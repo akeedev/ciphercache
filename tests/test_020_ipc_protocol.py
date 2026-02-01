@@ -20,7 +20,7 @@ from ciphercache.ttl import parse_ttl
 def daemon_state(tmp_path: Path) -> DaemonState:
     config = DaemonConfig(data_dir=tmp_path)
     state = DaemonState(config=config)
-    state.unlock(parse_ttl("1h"))
+    state.unlock(parse_ttl("1h"), ["service/api"])
     state.secrets["default"] = {"service/api": {"api_key": "test"}}
     return state
 
@@ -107,3 +107,19 @@ def test_get_secret_defaults_store(daemon_state: DaemonState) -> None:
     response = handle_request(daemon_state, request)
     assert response["type"] == "response"
     assert response["payload"]["secret"]["api_key"] == "test"
+
+
+def test_get_secret_not_in_allowlist(daemon_state: DaemonState) -> None:
+    daemon_state.secrets["default"]["other"] = {"value": "nope"}
+    ticket_path = daemon_state.issue_ticket("demo")
+    ticket = ticket_path.read_text(encoding="utf-8")
+    request = {
+        "version": "v0",
+        "id": "secret",
+        "type": "request",
+        "op": "get_secret",
+        "payload": {"ticket": ticket, "secret_name": "other"},
+    }
+    response = handle_request(daemon_state, request)
+    assert response["type"] == "error"
+    assert response["payload"]["code"] == ERROR_NOT_FOUND
