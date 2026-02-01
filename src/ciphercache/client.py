@@ -50,6 +50,7 @@ class ClientConfig:
     max_frame_bytes: int = 1_000_000
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0
+    unlock_timeout_seconds: float = 300.0
     retries: int = 3
     retry_backoff_seconds: float = 0.1
 
@@ -110,7 +111,7 @@ class Client:
         if not secrets:
             raise ValueError("secrets must be non-empty")
         payload: dict[str, Any] = {"ttl": ttl, "secrets": secrets}
-        response = self.request("unlock", payload)
+        response = self.request("unlock", payload, read_timeout_seconds=self.config.unlock_timeout_seconds)
         return bool(response.get("ok"))
 
     def lock(self) -> bool:
@@ -172,10 +173,15 @@ class Client:
         self.config.ticket_path = ticket_path
         return self.load_ticket()
 
-    def request(self, op: str, payload: dict[str, Any]) -> dict[str, object]:
+    def request(
+        self,
+        op: str,
+        payload: dict[str, Any],
+        read_timeout_seconds: float | None = None,
+    ) -> dict[str, object]:
         """Send a request and return the response payload."""
         envelope = _request_envelope(op, payload)
-        response = _send_with_retries(self.config, envelope)
+        response = _send_with_retries(self.config, envelope, read_timeout_seconds=read_timeout_seconds)
         return _parse_response(response)
 
 
@@ -210,13 +216,17 @@ def _request_envelope(op: str, payload: dict[str, Any]) -> dict[str, object]:
     }
 
 
-def _send_with_retries(config: ClientConfig, envelope: dict[str, object]) -> dict[str, object]:
+def _send_with_retries(
+    config: ClientConfig,
+    envelope: dict[str, object],
+    read_timeout_seconds: float | None = None,
+) -> dict[str, object]:
     """Send a request envelope, retrying transient connection errors."""
     attempts = max(1, config.retries)
     last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
-            return _send_once(config, envelope)
+            return _send_once(config, envelope, read_timeout_seconds=read_timeout_seconds)
         except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError, BrokenPipeError) as exc:
             last_exc = exc
             if attempt == attempts - 1:
@@ -226,7 +236,11 @@ def _send_with_retries(config: ClientConfig, envelope: dict[str, object]) -> dic
     raise last_exc
 
 
-def _send_once(config: ClientConfig, envelope: dict[str, object]) -> dict[str, object]:
+def _send_once(
+    config: ClientConfig,
+    envelope: dict[str, object],
+    read_timeout_seconds: float | None = None,
+) -> dict[str, object]:
     """Send a single request and return the decoded response envelope."""
     socket_path = config.socket_path
     if socket_path is None:
@@ -245,7 +259,7 @@ def _send_once(config: ClientConfig, envelope: dict[str, object]) -> dict[str, o
         conn.connect(str(socket_path))
         conn.settimeout(config.write_timeout_seconds)
         conn.sendall(frame)
-        conn.settimeout(config.read_timeout_seconds)
+        conn.settimeout(read_timeout_seconds or config.read_timeout_seconds)
         length_prefix = _recv_exact(conn, 4)
         if length_prefix is None:
             raise RuntimeError("No response from daemon")

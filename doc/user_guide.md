@@ -15,6 +15,8 @@ secret = client.get_secret("service/api")
 print(secret["api_key"])
 client.close_store()
 ```
+Note: unlock may take time due to password/YubiKey prompts; adjust
+`unlock_timeout_seconds` if needed.
 
 ## Installing
 

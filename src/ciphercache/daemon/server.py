@@ -146,7 +146,7 @@ class UnixSocketServer:
         if length > self.config.max_frame_bytes:
             error = _error_envelope(ERROR_INVALID_REQUEST, "Frame too large")
             conn.settimeout(self.config.write_timeout_seconds)
-            conn.sendall(encode_message(error))
+            _safe_send(conn, encode_message(error))
             return
         payload = _recv_exact(conn, length)
         if payload is None:
@@ -161,7 +161,7 @@ class UnixSocketServer:
             response = _error_envelope(ERROR_INVALID_REQUEST, f"Invalid frame: {exc}")
 
         conn.settimeout(self.config.write_timeout_seconds)
-        conn.sendall(encode_message(response))
+        _safe_send(conn, encode_message(response))
 
     def _handle_signal(self, signum: int, _frame: object | None) -> None:
         """Stop the accept loop and close the listener on signals."""
@@ -184,6 +184,14 @@ def _error_envelope(code: str, message: str) -> dict[str, Any]:
             "message": message,
         },
     }
+
+
+def _safe_send(conn: socket.socket, payload: bytes) -> None:
+    """Send a response, swallowing broken pipe/connection reset errors."""
+    try:
+        conn.sendall(payload)
+    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, socket.timeout):
+        _LOGGER.info("Client disconnected before response was sent")
 
 
 def _recv_exact(conn: socket.socket, length: int) -> bytes | None:

@@ -92,6 +92,7 @@ UX note:
   - `max_frame_bytes: int` (default `1_000_000`)
   - `read_timeout_seconds: float` (default `5.0`)
   - `write_timeout_seconds: float` (default `5.0`)
+  - `unlock_timeout_seconds: float` (default `300.0`)
   - `retries: int` (default `3`)
   - `retry_backoff_seconds: float` (default `0.1`)
 - `ciphercache.client.Status`
@@ -121,6 +122,7 @@ UX note:
 - `unlock` specifies a non-empty list of secret names to fetch and cache; new secrets require a new unlock.
 - `close_store` clears cached secrets while preserving tickets.
 - The SDK does not select database paths; store configuration is fixed by the daemon at startup.
+- `unlock` uses a longer read timeout to allow time for password/YubiKey prompts.
 
 ## Acceptance Criteria (MVP)
 - SDK can connect to the daemon socket and perform `ping`.

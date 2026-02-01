@@ -87,6 +87,26 @@ def test_handle_connection_ping() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
+def test_handle_connection_ignores_broken_pipe() -> None:
+    """Server should ignore clients that disconnect before response."""
+    data_dir = _short_temp_dir()
+    config = DaemonConfig(data_dir=data_dir, write_agent_metadata=False)
+    state = DaemonState(config=config)
+    server = UnixSocketServer(config=config, state=state)
+
+    try:
+        client, server_sock = socket.socketpair()
+        try:
+            request = {"version": "v0", "id": "ping", "type": "request", "op": "ping", "payload": {}}
+            client.sendall(encode_message(request))
+            client.close()
+            server._handle_connection(server_sock)
+        finally:
+            server_sock.close()
+    finally:
+        rmtree(data_dir, ignore_errors=True)
+
+
 def test_rejects_large_frame() -> None:
     data_dir = _short_temp_dir()
     config = DaemonConfig(data_dir=data_dir, max_frame_bytes=32, write_agent_metadata=False)
