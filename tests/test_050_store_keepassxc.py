@@ -13,6 +13,8 @@ from ciphercache.store.keepassxc import (
     _strip_to_xml,
     load_secrets,
 )
+from ciphercache.yubikey import detect_yubikey, is_ykman_available
+from ciphercache.daemon.runner import _build_parser
 
 
 def _demo_export_path() -> Path:
@@ -100,3 +102,38 @@ def test_find_keepassxc_cli_prefers_highest_version(tmp_path: Path, monkeypatch:
         path.write_text("", encoding="utf-8")
     found = _find_keepassxc_cli([root])
     assert found == paths[1]
+
+
+def test_unlock_ttl_arg_parses() -> None:
+    """Runner should accept --unlock-ttl and parse it."""
+    parser = _build_parser()
+    args = parser.parse_args(["--unlock-all-on-start", "--unlock-ttl", "1h", "--db-path", "demo.kdbx"])
+    assert args.unlock_ttl == "1h"
+
+
+def test_ykman_available_false_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """is_ykman_available should return False when ykman is not in PATH."""
+    monkeypatch.setenv("PATH", "")
+    assert is_ykman_available() is False
+
+
+def test_detect_yubikey_errors_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """detect_yubikey should error when ykman is missing."""
+    monkeypatch.setenv("PATH", "")
+    with pytest.raises(RuntimeError):
+        detect_yubikey()
+
+
+def test_run_ykman_list_parses_serial_line(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Parse ykman list output that includes 'Serial: <id>'."""
+    from ciphercache import yubikey
+
+    class _Result:
+        stdout = "YubiKey 5C Nano (5.4.3) [OTP+FIDO+CCID] Serial: 23753626\\n"
+
+    def _fake_run(*_args: object, **_kwargs: object) -> _Result:
+        return _Result()
+
+    monkeypatch.setattr(yubikey.subprocess, "run", _fake_run)
+    result = yubikey._run_ykman_list(Path("/usr/local/bin/ykman"))
+    assert result.serials == ["23753626"]

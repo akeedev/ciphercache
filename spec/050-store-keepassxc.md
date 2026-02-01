@@ -33,6 +33,7 @@ secrets, minimizing exposure and latency after unlock.
 Unlock-all mode (daemon startup):
 - When enabled at startup, the daemon exports the database once and caches all entries.
 - `get_secret` may return any cached entry without a per-secret allowlist.
+- The startup unlock may accept an optional TTL; default is infinity.
 
 Parsing note:
 - The CLI may emit localized prompts before the XML. The parser must locate the first `<?xml`
@@ -51,6 +52,7 @@ Store configuration is provided via `DaemonConfig` or a dedicated store config:
 - `database_path: Path`
 - `key_file_path: Path | None`
 - `yubikey_slot: str | None` (e.g., `"1"` or `"1:23753626"`)
+- `yubikey_slot` may be `"auto"` to use YubiKey autodetect (see `spec/060-yubikey-autodetect.md`).
 - `no_password: bool` (default `False`)
 - `keepassxc_cli_path: Path | None`
 - `keepassxc_cli_search_roots: list[Path]` (default `[Path("/Applications")]`)

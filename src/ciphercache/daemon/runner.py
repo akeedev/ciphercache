@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Iterable
+from typing import Sequence
 
 from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
 from ciphercache.store.keepassxc import KeePassXCConfig, load_all_secrets
@@ -37,8 +37,8 @@ class DemoDaemonState(DaemonState):
             store[name] = {"demo": True, "value": f"demo:{name}"}
 
 
-def _parse_args() -> argparse.Namespace:
-    """Parse CLI arguments for the daemon runner."""
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the daemon runner."""
     parser = argparse.ArgumentParser(description="Run the ciphercached daemon.")
     parser.add_argument(
         "--data-dir",
@@ -62,6 +62,11 @@ def _parse_args() -> argparse.Namespace:
         help="Unlock and cache all secrets on startup (requires store config).",
     )
     parser.add_argument(
+        "--unlock-ttl",
+        default=None,
+        help="TTL for unlock-all-on-start (e.g., 1h, 30m). Default: infinity.",
+    )
+    parser.add_argument(
         "--db-path",
         type=Path,
         help="KeePassXC database path.",
@@ -74,7 +79,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--yubikey",
         type=str,
-        help="YubiKey slot[:serial] (e.g., 1:23753626).",
+        help="YubiKey slot[:serial] (e.g., 1:23753626) or 'auto'/'autodetect' to autodetect.",
     )
     parser.add_argument(
         "--no-password",
@@ -91,7 +96,12 @@ def _parse_args() -> argparse.Namespace:
         default="INFO",
         help="Logging level (default: INFO).",
     )
-    return parser.parse_args()
+    return parser
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse CLI arguments for the daemon runner."""
+    return _build_parser().parse_args(argv)
 
 
 def _run_server(config: DaemonConfig, state: DaemonState, unlock_all_on_start: bool) -> None:
@@ -122,23 +132,32 @@ def _unlock_all_on_start(state: DaemonState) -> None:
         raise ValueError("store_config is required for unlock-all-on-start")
     secrets = load_all_secrets(config)
     names = list(secrets.keys())
-    state.unlock(None, names)
+    ttl_seconds = None
+    if state.config.unlock_all_ttl is not None:
+        ttl_seconds = state.config.unlock_all_ttl
+    state.unlock(ttl_seconds, names)
     for name, payload in secrets.items():
         state.secrets.setdefault(state.active_store_alias or state.config.store_alias_default, {})[name] = payload
 
 
-def main(argv: Iterable[str] | None = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Run the daemon with optional demo behavior."""
     _ = argv
-    args = _parse_args()
+    args = _parse_args(argv)
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
     store_config = _build_store_config(args)
     if args.unlock_all_on_start and store_config is None:
         raise ValueError("--unlock-all-on-start requires --db-path")
+    unlock_all_ttl = None
+    if args.unlock_ttl:
+        from ciphercache.ttl import parse_ttl
+
+        unlock_all_ttl = parse_ttl(args.unlock_ttl)
     config = DaemonConfig(
         data_dir=args.data_dir,
         write_agent_metadata=not args.no_agent_metadata,
         store_config=store_config,
+        unlock_all_ttl=unlock_all_ttl,
     )
     state: DaemonState
     if args.demo:

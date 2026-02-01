@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from ciphercache.yubikey import detect_yubikey
 
 @dataclass(slots=True)
 class KeePassXCConfig:
@@ -34,7 +35,7 @@ class KeePassXCConfig:
 
     database_path: Path
     key_file_path: Path | None = None
-    yubikey_slot: str | None = None
+    yubikey_slot: str | None = None  # "auto" uses ykman autodetect
     no_password: bool = False
     keepassxc_cli_path: Path | None = None
     keepassxc_cli_search_roots: list[Path] = field(default_factory=lambda: [Path("/Applications")])
@@ -55,7 +56,11 @@ class KeePassXCClient:
         if self.config.key_file_path is not None:
             args.extend(["--key-file", str(self.config.key_file_path)])
         if self.config.yubikey_slot is not None:
-            args.extend(["--yubikey", self.config.yubikey_slot])
+            slot = self.config.yubikey_slot
+            if slot in {"auto", "autodetect"}:
+                serial = detect_yubikey()
+                slot = f"1:{serial}"
+            args.extend(["--yubikey", slot])
         if self.config.no_password:
             args.append("--no-password")
         args.append(str(self.config.database_path))

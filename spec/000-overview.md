@@ -104,5 +104,6 @@ This repository uses `spec/NNN-*.md` documents.
 - `spec/030-daemon.md` (daemon process, Unix socket server loop, and lifecycle)
 - `spec/040-client-sdk.md` (client SDK connection, ticket loading, request helpers)
 - `spec/050-store-keepassxc.md` (KeePassXC integration via keepassxc-cli export)
+- `spec/060-yubikey-autodetect.md` (optional YubiKey autodetect via ykman)
 
 Note: The feature specs listed above are not complete; they evolve as the project matures.

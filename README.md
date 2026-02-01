@@ -71,6 +71,7 @@ Unlock-all on startup (caches all entries at start):
 ```bash
 uv run python scripts/run_daemon.py \
   --unlock-all-on-start \
+  --unlock-ttl 1h \
   --db-path testdata/demopasswords.kdbx \
   --yubikey 1:23753626 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli

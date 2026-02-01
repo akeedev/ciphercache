@@ -93,6 +93,7 @@ entered in the daemon terminal.
 Unlock-all mode:
 - When enabled at startup, the daemon exports and caches all entries from the store.
 - In this mode, clients with valid tickets may request any cached secret.
+- The startup unlock may accept an optional TTL; default is infinity.
 
 ## Agent Metadata (`agent.json`)
 Written at startup and removed on shutdown. Intended for debugging and discovery.

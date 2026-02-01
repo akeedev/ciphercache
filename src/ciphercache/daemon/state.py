@@ -28,6 +28,7 @@ class DaemonConfig:
     write_timeout_seconds: float = 5.0
     write_agent_metadata: bool = True
     store_config: Optional[KeePassXCConfig] = None
+    unlock_all_ttl: int | None = None
 
     def __post_init__(self) -> None:
         """Populate derived defaults for socket and expected credentials."""
