@@ -88,6 +88,7 @@ Notes on XML fields:
   - `KeePassXCClient`: executes CLI export and returns parsed entries.
   - `KeePassXCParser`: parses XML and extracts requested entries by title.
   - `load_secrets(config, names) -> dict[str, dict[str, object]]`: main entrypoint used by daemon unlock.
+  - `load_all_secrets(config) -> dict[str, dict[str, object]]`: used for unlock-all startup mode.
 
 ## Error Handling
 - Invalid DB path or CLI failure → `internal_error` or `invalid_request` (with safe message).

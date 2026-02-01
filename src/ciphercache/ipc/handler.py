@@ -10,6 +10,7 @@ from typing import Any, cast
 from ciphercache.daemon.state import DaemonState
 from ciphercache.ipc.framing import decode_single_frame, encode_message
 from ciphercache.ttl import parse_ttl
+from ciphercache.store.keepassxc import load_secrets
 
 
 ERROR_INVALID_REQUEST = "invalid_request"
@@ -164,7 +165,15 @@ def _handle_unlock(state: DaemonState, request: Envelope) -> dict[str, Any]:
     ttl_value = _require_string(request.payload, "ttl")
     secret_names = _require_string_list(request.payload, "secrets")
     ttl_seconds = parse_ttl(ttl_value)
-    state.unlock(ttl_seconds, secret_names)
+    if state.config.store_config is not None:
+        secrets = load_secrets(state.config.store_config, secret_names)
+        if len(secrets) != len(secret_names):
+            raise LookupError("Secret not found")
+        state.unlock(ttl_seconds, secret_names)
+        store_alias = state.active_store_alias or state.config.store_alias_default
+        state.secrets[store_alias] = secrets
+    else:
+        state.unlock(ttl_seconds, secret_names)
     return _response(request, {"ok": True})
 
 

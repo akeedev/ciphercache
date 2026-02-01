@@ -14,6 +14,12 @@ Version metadata (update when releasing):
 - Repository: https://github.com/drakee/ciphercache
 """
 
-from ciphercache.store.keepassxc import KeePassXCClient, KeePassXCConfig, KeePassXCParser, load_secrets
+from ciphercache.store.keepassxc import (
+    KeePassXCClient,
+    KeePassXCConfig,
+    KeePassXCParser,
+    load_all_secrets,
+    load_secrets,
+)
 
-__all__ = ["KeePassXCClient", "KeePassXCConfig", "KeePassXCParser", "load_secrets"]
+__all__ = ["KeePassXCClient", "KeePassXCConfig", "KeePassXCParser", "load_all_secrets", "load_secrets"]

@@ -9,6 +9,9 @@ import secrets
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
+
+from ciphercache.store.keepassxc import KeePassXCConfig
 
 
 @dataclass(slots=True)
@@ -24,6 +27,7 @@ class DaemonConfig:
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0
     write_agent_metadata: bool = True
+    store_config: Optional[KeePassXCConfig] = None
 
     def __post_init__(self) -> None:
         """Populate derived defaults for socket and expected credentials."""

@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ciphercache.store.keepassxc import KeePassXCParser, _split_tags, _strip_to_xml
+import pytest
+
+from ciphercache.store.keepassxc import (
+    KeePassXCClient,
+    KeePassXCConfig,
+    KeePassXCParser,
+    _split_tags,
+    _strip_to_xml,
+    load_secrets,
+)
 
 
 def _demo_export_path() -> Path:
@@ -50,3 +59,17 @@ def test_parse_demo_export_tags_split() -> None:
     assert isinstance(tags, list)
     assert "tag1" in tags
     assert "tag2" in tags
+
+
+def test_load_secrets_filters_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    """load_secrets should filter to requested titles."""
+    raw = _demo_export_path().read_text(encoding="utf-8")
+
+    def _fake_export(self: KeePassXCClient) -> str:
+        return raw
+
+    monkeypatch.setattr(KeePassXCClient, "export_xml", _fake_export)
+    config = KeePassXCConfig(database_path=Path("demo.kdbx"))
+    secrets = load_secrets(config, ["demoentry1", "missing"])
+    assert "demoentry1" in secrets
+    assert "missing" not in secrets

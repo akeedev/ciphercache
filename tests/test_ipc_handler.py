@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pytest
 
+import ciphercache.ipc.handler as handler
 from ciphercache.daemon.state import DaemonConfig, DaemonState
-from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, ERROR_LOCKED, handle_request
+from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, ERROR_LOCKED, ERROR_NOT_FOUND, handle_request
+from ciphercache.store.keepassxc import KeePassXCConfig
 
 
 @pytest.fixture()
@@ -114,3 +116,46 @@ def test_unlock_invalid_secrets(locked_state: DaemonState, payload: dict[str, ob
     request = {"version": "v0", "id": "1", "type": "request", "op": "unlock", "payload": payload}
     response = handle_request(locked_state, request)
     assert response["payload"]["code"] == ERROR_INVALID_REQUEST
+
+
+def test_unlock_with_store_config_populates_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = DaemonConfig(data_dir=tmp_path, store_config=KeePassXCConfig(database_path=Path("demo.kdbx")))
+    state = DaemonState(config=config)
+
+    def fake_load_secrets(_config: KeePassXCConfig, names: list[str]) -> dict[str, dict[str, object]]:
+        assert names == ["service/api"]
+        return {"service/api": {"title": "service/api"}}
+
+    monkeypatch.setattr(handler, "load_secrets", fake_load_secrets)
+
+    request = {
+        "version": "v0",
+        "id": "1",
+        "type": "request",
+        "op": "unlock",
+        "payload": {"ttl": "5s", "secrets": ["service/api"]},
+    }
+    response = handle_request(state, request)
+    assert response["type"] == "response"
+    assert state.secrets["default"]["service/api"]["title"] == "service/api"
+
+
+def test_unlock_with_store_config_missing_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = DaemonConfig(data_dir=tmp_path, store_config=KeePassXCConfig(database_path=Path("demo.kdbx")))
+    state = DaemonState(config=config)
+
+    def fake_load_secrets(_config: KeePassXCConfig, names: list[str]) -> dict[str, dict[str, object]]:
+        _ = names
+        return {}
+
+    monkeypatch.setattr(handler, "load_secrets", fake_load_secrets)
+
+    request = {
+        "version": "v0",
+        "id": "1",
+        "type": "request",
+        "op": "unlock",
+        "payload": {"ttl": "5s", "secrets": ["service/api"]},
+    }
+    response = handle_request(state, request)
+    assert response["payload"]["code"] == ERROR_NOT_FOUND

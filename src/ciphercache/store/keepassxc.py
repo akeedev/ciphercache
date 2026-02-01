@@ -63,7 +63,8 @@ class KeePassXCClient:
             result = subprocess.run(
                 args,
                 check=True,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=None,
                 text=True,
             )
         except subprocess.CalledProcessError as exc:
@@ -97,6 +98,13 @@ def load_secrets(config: KeePassXCConfig, names: Iterable[str]) -> dict[str, dic
     parser = KeePassXCParser()
     entries = parser.parse(client.export_xml())
     return {name: entries[name] for name in requested if name in entries}
+
+
+def load_all_secrets(config: KeePassXCConfig) -> dict[str, dict[str, object]]:
+    """Load all secrets from the database."""
+    client = KeePassXCClient(config=config)
+    parser = KeePassXCParser()
+    return parser.parse(client.export_xml())
 
 
 def _strip_to_xml(raw_output: str) -> str:

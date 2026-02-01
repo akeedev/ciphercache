@@ -24,6 +24,7 @@ from typing import Iterable
 import logging
 
 from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
+from ciphercache.store.keepassxc import KeePassXCConfig, load_all_secrets
 
 
 class DemoDaemonState(DaemonState):
@@ -57,6 +58,36 @@ def _parse_args() -> argparse.Namespace:
         help="Seed requested secrets with demo values after unlock.",
     )
     parser.add_argument(
+        "--unlock-all-on-start",
+        action="store_true",
+        help="Unlock and cache all secrets on startup (requires store config).",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        help="KeePassXC database path.",
+    )
+    parser.add_argument(
+        "--key-file",
+        type=Path,
+        help="KeePassXC key file path.",
+    )
+    parser.add_argument(
+        "--yubikey",
+        type=str,
+        help="YubiKey slot[:serial] (e.g., 1:23753626).",
+    )
+    parser.add_argument(
+        "--no-password",
+        action="store_true",
+        help="Use YubiKey-only mode (no password).",
+    )
+    parser.add_argument(
+        "--keepassxc-cli-path",
+        type=Path,
+        help="Path to keepassxc-cli executable.",
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         help="Logging level (default: INFO).",
@@ -64,10 +95,37 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _run_server(config: DaemonConfig, state: DaemonState) -> None:
+def _run_server(config: DaemonConfig, state: DaemonState, unlock_all_on_start: bool) -> None:
     """Create and run the Unix socket server forever."""
     server = UnixSocketServer(config=config, state=state)
+    if unlock_all_on_start:
+        _unlock_all_on_start(state)
     server.serve_forever()
+
+
+def _build_store_config(args: argparse.Namespace) -> KeePassXCConfig | None:
+    """Build KeePassXCConfig from CLI args."""
+    if args.db_path is None:
+        return None
+    return KeePassXCConfig(
+        database_path=args.db_path,
+        key_file_path=args.key_file,
+        yubikey_slot=args.yubikey,
+        no_password=args.no_password,
+        keepassxc_cli_path=args.keepassxc_cli_path,
+    )
+
+
+def _unlock_all_on_start(state: DaemonState) -> None:
+    """Unlock the store and cache all entries (startup mode)."""
+    config = state.config.store_config
+    if config is None:
+        raise ValueError("store_config is required for unlock-all-on-start")
+    secrets = load_all_secrets(config)
+    names = list(secrets.keys())
+    state.unlock(None, names)
+    for name, payload in secrets.items():
+        state.secrets.setdefault(state.active_store_alias or state.config.store_alias_default, {})[name] = payload
 
 
 def main(argv: Iterable[str] | None = None) -> None:
@@ -75,16 +133,20 @@ def main(argv: Iterable[str] | None = None) -> None:
     _ = argv
     args = _parse_args()
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
+    store_config = _build_store_config(args)
+    if args.unlock_all_on_start and store_config is None:
+        raise ValueError("--unlock-all-on-start requires --db-path")
     config = DaemonConfig(
         data_dir=args.data_dir,
         write_agent_metadata=not args.no_agent_metadata,
+        store_config=store_config,
     )
     state: DaemonState
     if args.demo:
         state = DemoDaemonState(config=config)
     else:
         state = DaemonState(config=config)
-    _run_server(config, state)
+    _run_server(config, state, args.unlock_all_on_start)
 
 
 if __name__ == "__main__":
