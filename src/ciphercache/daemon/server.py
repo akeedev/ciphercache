@@ -1,5 +1,23 @@
 """SPDX-License-Identifier: Apache-2.0
-Blocking Unix domain socket server for ciphercached.
+Copyright (c) 2026 @drakee
+
+Provided "AS IS", without warranties or guarantees; use at your own risk.
+
+Module overview:
+- Implements a blocking Unix domain socket server for ciphercached.
+- Primary class: `UnixSocketServer`, which owns the listener socket and daemon lifecycle.
+- Lifecycle flow: `setup()` prepares directories, writes agent.json, binds/listens; `serve_forever()`
+  accepts connections; `_handle_connection()` reads a single framed request and writes one response;
+  `close()` tears down the socket, metadata, and locks state.
+- Frame handling is delegated to `ciphercache.ipc.framing` and `ciphercache.ipc.handler`.
+- Security controls include socket permissions, peer UID/GID checks, max-frame enforcement,
+  and read/write timeouts.
+
+Version metadata (update when releasing):
+- Version: 0.1.0
+- Date: 2026-02-01
+- Author: @drakee
+- Repository: https://github.com/drakee/ciphercache
 """
 
 from __future__ import annotations
@@ -19,6 +37,7 @@ from ciphercache.ipc.framing import decode_single_frame, encode_message
 from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, handle_request
 
 
+# Linux SO_PEERCRED for getsockopt - for compatibility; macOS uses getpeereid instead.
 _SO_PEERCRED = 0x11
 
 
@@ -35,26 +54,38 @@ class UnixSocketServer:
     def setup(self) -> None:
         """Prepare the data directory, write metadata, and bind the socket."""
         data_dir = self.config.data_dir
-        data_dir.mkdir(parents=True, exist_ok=True)
-        os.chmod(data_dir, 0o700)
+        try:
+            data_dir.mkdir(parents=True, exist_ok=True)
+            os.chmod(data_dir, 0o700)
+        except OSError as exc:
+            raise OSError(f"Failed to prepare data directory: {data_dir}") from exc
 
         socket_path = self.config.socket_path
         if socket_path is None:
             raise ValueError("socket_path is required")
-        socket_path.parent.mkdir(parents=True, exist_ok=True)
-        os.chmod(socket_path.parent, 0o700)
-        if socket_path.exists():
-            socket_path.unlink()
+        try:
+            socket_path.parent.mkdir(parents=True, exist_ok=True)
+            os.chmod(socket_path.parent, 0o700)
+            if socket_path.exists():
+                socket_path.unlink()
+        except OSError as exc:
+            raise OSError(f"Failed to prepare socket directory: {socket_path.parent}") from exc
 
         if self.config.write_agent_metadata:
             self.agent_metadata_path = data_dir / "agent.json"
-            _write_agent_metadata(self.agent_metadata_path, socket_path, data_dir)
+            try:
+                _write_agent_metadata(self.agent_metadata_path, socket_path, data_dir)
+            except OSError as exc:
+                raise OSError(f"Failed to write agent metadata: {self.agent_metadata_path}") from exc
 
-        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        listener.bind(str(socket_path))
-        os.chmod(socket_path, 0o600)
-        listener.listen()
-        self.listener = listener
+        try:
+            listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            listener.bind(str(socket_path))
+            os.chmod(socket_path, 0o600)
+            listener.listen()
+            self.listener = listener
+        except OSError as exc:
+            raise OSError(f"Failed to bind Unix socket: {socket_path}") from exc
 
     def serve_forever(self) -> None:
         """Accept and handle connections until interrupted."""
@@ -125,6 +156,7 @@ class UnixSocketServer:
         conn.sendall(encode_message(response))
 
     def _handle_signal(self, signum: int, _frame: object | None) -> None:
+        """Stop the accept loop and close the listener on signals."""
         _ = signum
         self._running = False
         if self.listener is not None:
@@ -132,6 +164,7 @@ class UnixSocketServer:
 
 
 def _error_envelope(code: str, message: str) -> dict[str, Any]:
+    """Build a minimal error response envelope."""
     return {
         "version": "v0",
         "id": "unknown",
@@ -145,6 +178,7 @@ def _error_envelope(code: str, message: str) -> dict[str, Any]:
 
 
 def _recv_exact(conn: socket.socket, length: int) -> bytes | None:
+    """Receive an exact number of bytes or return None on timeout/EOF."""
     if length <= 0:
         return None
     chunks: list[bytes] = []
@@ -162,6 +196,7 @@ def _recv_exact(conn: socket.socket, length: int) -> bytes | None:
 
 
 def _validate_peer(conn: socket.socket, expected_uid: int | None, expected_gid: int | None) -> bool:
+    """Validate the peer credentials against expected UID/GID."""
     uid, gid = _get_peer_credentials(conn)
     if expected_uid is not None and uid is not None and uid != expected_uid:
         return False
@@ -171,6 +206,7 @@ def _validate_peer(conn: socket.socket, expected_uid: int | None, expected_gid: 
 
 
 def _get_peer_credentials(conn: socket.socket) -> tuple[int | None, int | None]:
+    """Return the peer UID/GID if available, otherwise (None, None)."""
     if hasattr(socket, "getpeereid"):
         uid, gid = socket.getpeereid(conn)  # type: ignore[attr-defined]
         return uid, gid
@@ -186,6 +222,7 @@ def _get_peer_credentials(conn: socket.socket) -> tuple[int | None, int | None]:
 
 
 def _write_agent_metadata(path: Path, socket_path: Path, data_dir: Path) -> None:
+    """Write the agent metadata JSON file with 0600 permissions."""
     payload = {
         "version": "v0",
         "pid": os.getpid(),
@@ -203,6 +240,7 @@ def _write_agent_metadata(path: Path, socket_path: Path, data_dir: Path) -> None
 
 
 def _install_signal_handlers(handler: Any) -> dict[int, Any]:
+    """Install SIGINT/SIGTERM handlers and return previous handlers."""
     previous: dict[int, Any] = {}
     for signum in (signal.SIGINT, signal.SIGTERM):
         previous[signum] = signal.getsignal(signum)
@@ -211,5 +249,6 @@ def _install_signal_handlers(handler: Any) -> dict[int, Any]:
 
 
 def _restore_signal_handlers(previous: dict[int, Any]) -> None:
+    """Restore previously installed signal handlers."""
     for signum, handler in previous.items():
         signal.signal(signum, handler)
