@@ -31,6 +31,7 @@ This is a general, non-project specific set of coding guidelines.
 - Do not introduce new dependencies unless necessary.
 - When you need libraries, explain to me and ask me what to use
 - Never commit secrets to version control
+- Preserve and update project legal notices (LICENSE/NOTICE/README/CONTRIBUTING) when changes affect them.
 - The project will be open source, so we can use open source libraries.
 - Eventually, the project will be shared on github.
 - Primary project language is Python, version >= 3.12 
@@ -85,6 +86,7 @@ This is a general, non-project specific set of coding guidelines.
 - Run relevant tests after changes; if tests fail, fix them before reporting success or explain why they cannot be fixed.
 - Always run pytest, mypy, and ruff for relevant changes before reporting success.
 - Always mock API calls or https: calls in tests
+- If a spec implies tests or demo notebooks cannot be added, ask before skipping them.
 
 
 ## Notebooks
@@ -95,6 +97,7 @@ This is a general, non-project specific set of coding guidelines.
 - In the second cell, notebooks should activate IPython's autoreload extension and import all relevant modules.
 - Notebooks should be divided into code cells that group functionality in a useful manner and order, often code cells will build up on previous ones. 
 - Notebooks should not mock API calls or https: calls, but use real data.
+- If a notebook is impractical or unsafe to add, ask before skipping it.
 
 
 ## Usage

@@ -1,1 +1,3 @@
-"""Top-level package for ciphercache."""
+"""SPDX-License-Identifier: Apache-2.0
+Top-level package for ciphercache.
+"""
