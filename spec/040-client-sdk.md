@@ -20,7 +20,7 @@ This SDK is the only supported client SDK in MVP.
 - Advanced policy management.
 - Ticket rotation or renewal.
 - Encrypted IPC channel.
-- CLI UX decisions (CLI should remain a thin wrapper over the SDK).
+- Rich CLI UX (CLI remains a thin wrapper over the SDK for MVP).
 
 ## Responsibilities
 - Discover the daemon endpoint.
