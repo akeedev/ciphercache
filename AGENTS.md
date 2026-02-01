@@ -17,6 +17,8 @@ This is a general, non-project specific set of coding guidelines.
   - when available the current feature spec under $PROJECT_DIR$/spec/NNN-*.md (I will name it).
 - We use uv, create according pyproject.toml files.
 - Create according run configurations for uv-based running, pytest, mypy and linting.
+- Each feature spec should include a module overview section with planned modules/classes,
+  main functions, and lifecycle notes when applicable.
 
 
 ## Version control

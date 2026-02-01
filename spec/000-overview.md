@@ -93,6 +93,7 @@ long-lived process environments.
 - Multiple store support (selectable by alias).
 - Alternative stores (age/GPG/SOPS-based file stores).
 - MCP adapter layer that fetches secrets via the agent API.
+- Optional CLI wrapper built on the SDK.
 
 
 ## Spec Map
@@ -102,6 +103,6 @@ This repository uses `spec/NNN-*.md` documents.
 - `spec/020-ipc-protocol.md` (IPC framing, envelope, and request/response schema)
 - `spec/030-daemon.md` (daemon process, Unix socket server loop, and lifecycle)
 - `spec/040-client-sdk.md` (client SDK connection, ticket loading, request helpers)
-- `spec/050-cli.md` (CLI commands built on the SDK)
+- `spec/050-store-keepassxc.md` (KeePassXC integration via keepassxc-cli export)
 
 Note: The feature specs listed above are not complete; they evolve as the project matures.

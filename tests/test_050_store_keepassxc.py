@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from ciphercache.store.keepassxc import KeePassXCParser, _split_tags, _strip_to_xml
+
+
+def _demo_export_path() -> Path:
+    """Return the demo export XML path."""
+    return Path(__file__).resolve().parents[1] / "testdata" / "demopasswords.export.xml"
+
+
+def test_strip_to_xml_ignores_prefix() -> None:
+    """Parser should ignore prompts before XML prolog."""
+    raw = "Passwort eingeben\\n<?xml version=\\\"1.0\\\"?><KeePassFile></KeePassFile>"
+    xml = _strip_to_xml(raw)
+    assert xml.startswith("<?xml")
+
+
+def test_split_tags_whitespace_and_commas() -> None:
+    """Tags should split on whitespace and commas."""
+    tags = _split_tags("tag1 tag2,tag3  tag4")
+    assert tags == ["tag1", "tag2", "tag3", "tag4"]
+
+
+def test_parse_demo_export_entries() -> None:
+    """Parse demo export and extract expected entries."""
+    raw = _demo_export_path().read_text(encoding="utf-8")
+    parser = KeePassXCParser()
+    entries = parser.parse(raw)
+
+    assert "demoentry1" in entries
+    assert "demoentry2" in entries
+    assert "Demokey in a group" in entries
+
+    entry = entries["demoentry1"]
+    assert entry["title"] == "demoentry1"
+    assert entry["username"] == "demouser"
+    assert entry["password"] == "demopassword"
+    assert entry["url"] == "http://www.x.com"
+    assert "tags" in entry
+
+
+def test_parse_demo_export_tags_split() -> None:
+    """Tags should split into a list."""
+    raw = _demo_export_path().read_text(encoding="utf-8")
+    parser = KeePassXCParser()
+    entries = parser.parse(raw)
+    tags = entries["Demokey in a group"]["tags"]
+    assert isinstance(tags, list)
+    assert "tag1" in tags
+    assert "tag2" in tags

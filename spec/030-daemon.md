@@ -85,6 +85,15 @@ or crypto internals.
 - Log a brief summary per request (op + payload keys). When present, log client_name.
 - Default log level for the daemon runner is INFO and should be configurable.
 
+## Optional Unlock on Startup
+The daemon runner may support an option to unlock on startup, prompting for
+KeePassXC credentials immediately. This can improve UX when prompts must be
+entered in the daemon terminal.
+
+Unlock-all mode:
+- When enabled at startup, the daemon exports and caches all entries from the store.
+- In this mode, clients with valid tickets may request any cached secret.
+
 ## Agent Metadata (`agent.json`)
 Written at startup and removed on shutdown. Intended for debugging and discovery.
 

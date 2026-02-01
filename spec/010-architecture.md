@@ -130,14 +130,14 @@ Layer 3 (Keychain-backed client credentials) is explicitly deferred to a future 
 - `ciphercached` reads from the store only during `unlock`, then closes the store.
 - The store integration must avoid leaking secrets via process arguments and logs.
 - The KeePassXC database path is supplied to the daemon via command-line argument; details are
-  specified in `spec/040-store-keepassxc.md`.
+  specified in `spec/050-store-keepassxc.md`.
 - Store identity is represented by a stable alias (not a filesystem path). The CLI maps aliases
   to store paths and passes the active store to the daemon. IPC requests may reference a store
   alias; in MVP a single active store is supported and acts as the default.
 - Rationale: aliases keep IPC and client code stable while allowing multiple stores later without
   exposing filesystem paths to clients.
 
-The mapping from store entries to secret names and JSON payloads is specified in `spec/040-store-keepassxc.md`.
+The mapping from store entries to secret names and JSON payloads is specified in `spec/050-store-keepassxc.md`.
 
 ## Cache and Crypto (In-Memory)
 - `ciphercached` caches only the secrets requested at `unlock` to avoid repeated store access during a session.

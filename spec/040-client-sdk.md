@@ -70,6 +70,10 @@ If `agent.json` exists and is readable, the SDK should use its socket path.
 - `not_found` → `LookupError`
 - `internal_error` → `RuntimeError`
 
+UX note:
+- Unlock triggers KeePassXC prompts in the daemon terminal (stderr). The SDK
+  should inform users to switch to the daemon console when unlock is requested.
+
 ## Retry Strategy
 - For connection failures (`FileNotFoundError`, `ConnectionRefusedError`,
   `ConnectionResetError`, `BrokenPipeError`), retry a small number of times
