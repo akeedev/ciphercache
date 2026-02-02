@@ -106,6 +106,7 @@ uv run pytest
 - `doc/overview.md`
 - `doc/user_guide.md`
 - `doc/mvp_checklist.md`
+- `DELIVERABLES.md` (project build artifacts and regeneration rules)
 
 ## PyCharm run configurations
 

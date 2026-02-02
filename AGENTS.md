@@ -51,6 +51,7 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - put Sources into $PROJECT_DIR$/src
 - put input data, work data, output data into $PROJECT_DIR$/data
 - put test datasets into $PROJECT_DIR$/testdata
+- put distributable packages into $PROJECT_DIR$/dist
 - Maintain documentation in `doc/` for user-facing changes (overview + user guide + MVP checklist).
 - put documentation into $PROJECT_DIR$/doc
 - clone vendor contributions by git into $PROJECT_DIR$/vendor as git submodules, but ask me first
@@ -139,3 +140,6 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 ## Output expectations
 - If uncertain, propose 2–3 options with tradeoffs.
 - Always summarize what changed and why, and list files touched.
+
+## Build artifacts checklist (agent workflow)
+See `DELIVERABLES.md` for required artifacts, regeneration triggers, and build commands.
