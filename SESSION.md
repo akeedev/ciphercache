@@ -1,15 +1,17 @@
 # SESSION.md
 
 ## Session date
-- 2026-02-01
+- 2026-02-02
 
 ## Current status
-- Working branch: `main`
+- Working branch: `main` (local ahead of origin by 2 commits)
 - IPC protocol + daemon + SDK implemented and tested.
 - KeePassXC integration (export XML parsing) implemented and wired to daemon unlock.
 - YubiKey autodetect via `ykman list` added (spec 060).
 - Client ticket auto-init + retry on invalid tickets.
+- Client name validation and safe ticket file names enforced.
 - Unlock timeout extended (client-side) for password/YubiKey prompts.
+- Peer UID/GID validation is best-effort with optional strict flag.
 - Demo notebooks updated for direct CLI export vs daemon unlock flows.
 - Documentation under `doc/` updated including user guide and MVP checklist.
 - Consistency and readiness pass completed with added tests and doc updates.
@@ -24,6 +26,7 @@
 - TTL format supports `s|m|h|d`, combined tokens, and `infinity`.
 - Client does not select database paths (daemon config fixed at startup).
 - `close_store` clears cached secrets while preserving tickets.
+- Peer credential validation is best-effort; strict enforcement is opt-in.
 
 ## Files changed (high level)
 - Specs: `spec/000-overview.md`, `spec/010-architecture.md`, `spec/020-ipc-protocol.md`,
@@ -46,7 +49,7 @@
 
 ## Git status snapshot
 - `git status -sb`:
-  - `## main...origin/main`
+  - `## main...origin/main [ahead 2]`
 
 ## TODO next session
 - Decide on release/versioning cadence if needed.
