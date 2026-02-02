@@ -1,6 +1,8 @@
 # AGENTS.md — Coding Agent Instructions
 
-You are an expert in Python, Unix shell, and in writing scalable software architectures for finance. You write secure, maintainable, and performant code following best practices. This is a general, non-project specific set of coding guidelines.
+You are an expert in Python, Unix shell, and in writing scalable software architectures 
+for finance. You write secure, maintainable, and performant code following best practices.
+This is a general, non-project specific set of coding guidelines.
 
 
 ## Session start checklist
@@ -13,6 +15,10 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - We work spec-first. Before implementing, read:
   - $PROJECT_DIR$/spec/000-overview.md and spec/010-architecture.md
   - when available the current feature spec under $PROJECT_DIR$/spec/NNN-*.md (I will name it).
+- We use uv, create according pyproject.toml files.
+- Create according run configurations for uv-based running, pytest, mypy and linting.
+- Each feature spec should include a module overview section with planned modules/classes,
+  main functions, and lifecycle notes when applicable.
 - When drafting a spec, include:
   - A brief target-behavior checklist (what should work when done).
   - Required demo scenarios (e.g., unlock-on-request vs unlock-all).
@@ -22,9 +28,8 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 
 
 ## Version control
-- We want the git main branch always to be deployable. Hence, we use GitHub Flow
-- Create a new git branch for each feature, or when bugfixing on main.
-- Commit often, with clear commit messages, but ask me for confirmation.
+- Create a new git branch for each feature or bugfix.
+- commit often, with clear commit messages.
 - Don't push. I will review your code and merge it into master.
 
 
@@ -33,16 +38,18 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - Prefer small, reviewable, incremental changes. Keep diffs minimal.
 - Do not introduce new dependencies unless necessary.
 - When you need libraries, explain to me and ask me what to use
+- Never commit secrets to version control
+- Avoid exposing sensitive identifiers (e.g., security hardware IDs, serials, account IDs) in docs, code, tests, or logs.
+- Always warn if you notice personal or possibly sensitive information that might be committed (names, emails, device IDs, hostnames, paths, tokens, credentials, internal URLs), and propose safe placeholders before writing or committing.
 - Write code for readability and maintainability; aim for clarity and a pleasant reading experience.
 - Preserve and update project legal notices (LICENSE/NOTICE/README/CONTRIBUTING) when changes affect them.
+- Maintain documentation in `doc/` for user-facing changes (overview + user guide + MVP checklist).
 - Keep runtime dependencies minimal; move dev tools to `dependency-groups.dev`.
 - When updating install docs, include both `pip` and `uv pip` commands.
 - The project will be open source, so we can use open source libraries.
 - Eventually, the project will be shared on github.
 - Primary project language is Python, version >= 3.12 
-- Each feature spec should include a module overview section with planned modules/classes, main functions, and lifecycle notes when applicable.
 - Environment is setup via uv, use uv for running code, tests, etc.
-- Setup according pyproject.toml files for use with uv
 
 
 ## Project file structure
@@ -51,8 +58,6 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - put Sources into $PROJECT_DIR$/src
 - put input data, work data, output data into $PROJECT_DIR$/data
 - put test datasets into $PROJECT_DIR$/testdata
-- put distributable packages into $PROJECT_DIR$/dist
-- Maintain documentation in `doc/` for user-facing changes (overview + user guide + MVP checklist).
 - put documentation into $PROJECT_DIR$/doc
 - clone vendor contributions by git into $PROJECT_DIR$/vendor as git submodules, but ask me first
 
@@ -68,14 +73,15 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - Locate symbols via IDE navigation / find usages when available.
 - Rely on project symbols from IDE where possible, read files only when needed
 - Prefer IDE refactorings (Rename/Move) over manual search/replace.
-- Create Jetbrains run configurations for uv-based running, pytest, mypy and linting.
 
 
 ## Python specifics
 - Error handling: fail fast with clear exceptions; use assertions; avoid silent fallbacks.
 - Use try/except only when you can add meaningful context or recovery; otherwise let exceptions propagate.
-- When operations are likely to fail (filesystem, sockets, subprocess), catch and re-raise with additional context using `raise ... from exc`.
-- Prefer context managers (`with`) for short-lived resources; keep long-lived sockets/files as explicit lifecycle-managed objects when appropriate.
+- When operations are likely to fail (filesystem, sockets, subprocess), catch and re-raise with
+  additional context using `raise ... from exc`.
+- Prefer context managers (`with`) for short-lived resources; keep long-lived sockets/files
+  as explicit lifecycle-managed objects when appropriate.
 - Logging: use existing logging setup; do not add print debugging.
 - Logging: record notable lifecycle events and actions with standard Python logging.
 - Follow PEP 8 with 120 character line limit
@@ -95,18 +101,8 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - Private classes/functions must have at least a brief docstring (one or two sentences).
 - Add brief comments for non-obvious constants, OS-specific terminology, or portability fallbacks.
 - For dataclasses, add brief inline comments for non-obvious fields or describe them in the class docstring.
-- Use doctests for small, pure functions where examples add clarity; avoid doctests for I/O, timing-dependent behavior, or complex state.
-
-## Security
-- Never commit secrets to version control
-- Avoid exposing sensitive identifiers (e.g., security hardware IDs, serials, account IDs) in docs, code, tests, or logs.
-- Always warn if you notice personal or possibly sensitive information that might be committed (names, emails, device IDs, hostnames, paths, tokens, credentials, internal URLs), and propose safe placeholders before writing or committing.
-- Avoid leaking secrets or sensitive identifiers in logs, errors, docs, or tests; redact when needed.
-- Treat all external inputs as untrusted; validate/normalize, guard against path traversal, and prefer allowlists.
-- When writing files from user input, sanitize filenames and avoid unsafe paths; use `pathlib` and explicit directories.
-- For secret/config files, use restrictive permissions (e.g., `0o600`) and avoid world-readable temp files.
-- Use secure random number generators (e.g., `secrets` module) and avoid home-grown crypto.
-- Favor least-privilege access (filesystem/network/subprocess) and avoid shelling out with untrusted input.
+- Use doctests for small, pure functions where examples add clarity; avoid doctests for I/O,
+  timing-dependent behavior, or complex state.
 
 
 ## Testing
@@ -116,7 +112,7 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 - In addition to spec-based tests, add unit tests per module or public function for edge cases and error paths.
 - Run relevant tests after changes; if tests fail, fix them before reporting success or explain why they cannot be fixed.
 - Always run pytest, mypy, and ruff for relevant changes before reporting success.
-- Mock API calls or https: calls in tests
+- Always mock API calls or https: calls in tests
 - If a spec implies tests or demo notebooks cannot be added, ask before skipping them.
 
 
@@ -140,6 +136,3 @@ You are an expert in Python, Unix shell, and in writing scalable software archit
 ## Output expectations
 - If uncertain, propose 2–3 options with tradeoffs.
 - Always summarize what changed and why, and list files touched.
-
-## Build artifacts checklist (agent workflow)
-See `DELIVERABLES.md` for required artifacts, regeneration triggers, and build commands.
