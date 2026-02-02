@@ -136,3 +136,6 @@ This is a general, non-project specific set of coding guidelines.
 ## Output expectations
 - If uncertain, propose 2–3 options with tradeoffs.
 - Always summarize what changed and why, and list files touched.
+
+## Build artifacts checklist (agent workflow)
+See `DELIVERABLES.md` (authoritative) for required artifacts, regeneration triggers, and build commands.
