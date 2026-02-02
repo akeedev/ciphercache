@@ -9,7 +9,7 @@ from shutil import rmtree
 
 import pytest
 
-from ciphercache.client import Client, ClientConfig, Status
+from ciphercache.client import Client, ClientConfig, Status, _load_agent_socket_path
 from ciphercache.ipc.framing import encode_message
 
 
@@ -138,6 +138,16 @@ def test_agent_json_overrides_socket_path() -> None:
         assert client.ping() is True
     finally:
         thread.join(timeout=1.0)
+        rmtree(data_dir, ignore_errors=True)
+
+
+def test_default_ticket_path_uses_client_name() -> None:
+    """Default ticket path should include client_name when ticket_path is unset."""
+    data_dir = _short_temp_dir()
+    try:
+        config = ClientConfig(data_dir=data_dir, client_name="custom")
+        assert config.ticket_path == data_dir / "tickets" / "custom.ticket"
+    finally:
         rmtree(data_dir, ignore_errors=True)
 
 
@@ -279,6 +289,26 @@ def test_get_secret_retries_on_invalid_ticket() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
+def test_close_store_returns_true() -> None:
+    """close_store returns True on success."""
+    data_dir = _short_temp_dir()
+    socket_path = data_dir / "ciphercached.sock"
+    response: dict[str, object] = {
+        "version": "v0",
+        "id": "close",
+        "type": "response",
+        "op": "close_store",
+        "payload": {"ok": True},
+    }
+    thread = _serve_once(socket_path, response)
+    try:
+        client = Client(config=ClientConfig(data_dir=data_dir))
+        assert client.close_store() is True
+    finally:
+        thread.join(timeout=1.0)
+        rmtree(data_dir, ignore_errors=True)
+
+
 def test_retry_on_connection_failure() -> None:
     """Retries are attempted for transient connection failures."""
     data_dir = _short_temp_dir()
@@ -289,3 +319,32 @@ def test_retry_on_connection_failure() -> None:
             client.ping()
     finally:
         rmtree(data_dir, ignore_errors=True)
+
+
+def test_load_agent_socket_path_malformed_json(tmp_path: Path) -> None:
+    """_load_agent_socket_path returns None when agent.json contains invalid JSON."""
+    agent_path = tmp_path / "agent.json"
+    agent_path.write_text("{not valid json", encoding="utf-8")
+    assert _load_agent_socket_path(tmp_path) is None
+
+
+def test_load_agent_socket_path_missing_socket_key(tmp_path: Path) -> None:
+    """_load_agent_socket_path returns None when socket_path is missing."""
+    agent_path = tmp_path / "agent.json"
+    agent_path.write_text(json.dumps({"version": "v0"}), encoding="utf-8")
+    assert _load_agent_socket_path(tmp_path) is None
+
+
+def test_load_agent_socket_path_empty_socket(tmp_path: Path) -> None:
+    """_load_agent_socket_path returns None when socket_path is empty."""
+    agent_path = tmp_path / "agent.json"
+    agent_path.write_text(json.dumps({"socket_path": ""}), encoding="utf-8")
+    assert _load_agent_socket_path(tmp_path) is None
+
+
+def test_load_agent_socket_path_valid(tmp_path: Path) -> None:
+    """_load_agent_socket_path returns the socket path when valid."""
+    agent_path = tmp_path / "agent.json"
+    agent_path.write_text(json.dumps({"socket_path": "/tmp/test.sock"}), encoding="utf-8")
+    result = _load_agent_socket_path(tmp_path)
+    assert result == Path("/tmp/test.sock")

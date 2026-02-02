@@ -35,7 +35,7 @@ from typing import Any
 
 from ciphercache.daemon.state import DaemonConfig, DaemonState
 from ciphercache.ipc.framing import decode_single_frame, encode_message
-from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, handle_request
+from ciphercache.ipc.handler import ERROR_INVALID_REQUEST, ERROR_UNAUTHORIZED, handle_request
 
 
 # Linux SO_PEERCRED for getsockopt - for compatibility; macOS uses getpeereid instead.
@@ -135,7 +135,12 @@ class UnixSocketServer:
 
     def _handle_connection(self, conn: socket.socket) -> None:
         """Validate peer credentials, read a frame, and respond."""
-        if not _validate_peer(conn, self.config.expected_uid, self.config.expected_gid):
+        try:
+            _validate_peer(conn, self.config.expected_uid, self.config.expected_gid)
+        except PermissionError as exc:
+            error = _error_envelope(ERROR_UNAUTHORIZED, str(exc))
+            conn.settimeout(self.config.write_timeout_seconds)
+            _safe_send(conn, encode_message(error))
             return
 
         conn.settimeout(self.config.read_timeout_seconds)
@@ -215,10 +220,14 @@ def _recv_exact(conn: socket.socket, length: int) -> bytes | None:
 def _validate_peer(conn: socket.socket, expected_uid: int | None, expected_gid: int | None) -> bool:
     """Validate the peer credentials against expected UID/GID."""
     uid, gid = _get_peer_credentials(conn)
-    if expected_uid is not None and uid is not None and uid != expected_uid:
-        return False
-    if expected_gid is not None and gid is not None and gid != expected_gid:
-        return False
+    if expected_uid is not None and uid is None:
+        raise PermissionError("Peer UID unavailable")
+    if expected_gid is not None and gid is None:
+        raise PermissionError("Peer GID unavailable")
+    if expected_uid is not None and uid != expected_uid:
+        raise PermissionError("Peer UID mismatch")
+    if expected_gid is not None and gid != expected_gid:
+        raise PermissionError("Peer GID mismatch")
     return True
 
 

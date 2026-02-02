@@ -22,7 +22,9 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as stdlib_ET
+
+import defusedxml.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -121,7 +123,7 @@ def _strip_to_xml(raw_output: str) -> str:
     return raw_output[index:]
 
 
-def _parse_entry(entry: ET.Element) -> dict[str, object]:
+def _parse_entry(entry: stdlib_ET.Element) -> dict[str, object]:
     """Parse an <Entry> element into a secret dict."""
     data: dict[str, object] = {}
     strings = entry.findall("String")
@@ -162,7 +164,7 @@ def _find_keepassxc_cli(search_roots: Iterable[Path]) -> Path | None:
             continue
         for app in root.glob("KeePassXC*.app"):
             cli_path = app / "Contents" / "MacOS" / "keepassxc-cli"
-            if cli_path.exists():
+            if cli_path.is_file() and os.access(cli_path, os.X_OK):
                 candidates.append(cli_path)
     if not candidates:
         return None
@@ -176,7 +178,7 @@ def _find_keepassxc_in_path() -> Path | None:
         if not folder:
             continue
         candidate = Path(folder) / "keepassxc-cli"
-        if candidate.exists():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
             return candidate
     return None
 
@@ -185,7 +187,7 @@ def _prefer_highest_version(paths: list[Path]) -> Path:
     """Pick the KeePassXC app path with the highest version suffix."""
     def version_key(path: Path) -> tuple[int, ...]:
         name = path.parts[-4]  # KeePassXC_X.Y.Z.app
-        match = re.search(r"(\\d+\\.\\d+\\.\\d+)", name)
+        match = re.search(r"(\d+\.\d+\.\d+)", name)
         if not match:
             return (0,)
         return tuple(int(part) for part in match.group(1).split("."))

@@ -4,6 +4,8 @@ from pathlib import Path
 
 import time
 
+import pytest
+
 from ciphercache.daemon.state import DaemonConfig, DaemonState
 from ciphercache.ttl import parse_ttl
 
@@ -63,3 +65,10 @@ def test_default_store_alias_set_on_unlock(tmp_path: Path) -> None:
     state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
     state.unlock(parse_ttl("1h"), ["service/api"])
     assert state.active_store_alias == "default"
+
+
+@pytest.mark.parametrize("client_name", ["../oops", "..", "bad/name", "bad\\name", ""])
+def test_issue_ticket_rejects_invalid_client_name(tmp_path: Path, client_name: str) -> None:
+    state = DaemonState(config=DaemonConfig(data_dir=tmp_path))
+    with pytest.raises(ValueError):
+        state.issue_ticket(client_name)

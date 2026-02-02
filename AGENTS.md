@@ -19,6 +19,12 @@ This is a general, non-project specific set of coding guidelines.
 - Create according run configurations for uv-based running, pytest, mypy and linting.
 - Each feature spec should include a module overview section with planned modules/classes,
   main functions, and lifecycle notes when applicable.
+- When drafting a spec, include:
+  - A brief target-behavior checklist (what should work when done).
+  - Required demo scenarios (e.g., unlock-on-request vs unlock-all).
+  - Prompt location notes for any user interaction (daemon terminal vs notebook/client).
+  - Explicit defaults that impact UX (timeouts, retries, auto-init).
+  - A short list of assumptions for confirmation.
 
 
 ## Version control

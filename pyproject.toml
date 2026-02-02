@@ -16,6 +16,7 @@ classifiers = [
 ]
 urls = {Homepage = "https://github.com/drakee/ciphercache"}
 dependencies = [
+    "defusedxml>=0.7.1",
 ]
 
 [tool.setuptools]
@@ -52,6 +53,7 @@ dev = [
     "ipykernel>=7.1.0",
     "mypy>=1.11",
     "ruff>=0.14.14",
+    "types-defusedxml>=0.7.0.20250822",
 ]
 
 [project.scripts]

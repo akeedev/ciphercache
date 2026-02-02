@@ -9,9 +9,12 @@ from shutil import rmtree
 
 import pytest
 
+from ciphercache.daemon.runner import DemoDaemonState, _unlock_all_on_start
 from ciphercache.daemon.server import UnixSocketServer
 from ciphercache.daemon.state import DaemonConfig, DaemonState
 from ciphercache.ipc.framing import decode_single_frame, encode_message
+from ciphercache.ipc.handler import ERROR_UNAUTHORIZED
+from ciphercache.store.keepassxc import KeePassXCConfig
 
 
 def _short_temp_dir() -> Path:
@@ -63,11 +66,16 @@ def test_socket_file_permissions_and_cleanup() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
-def test_handle_connection_ping() -> None:
+def test_handle_connection_ping(monkeypatch: pytest.MonkeyPatch) -> None:
     data_dir = _short_temp_dir()
     config = DaemonConfig(data_dir=data_dir, write_agent_metadata=False)
     state = DaemonState(config=config)
     server = UnixSocketServer(config=config, state=state)
+
+    monkeypatch.setattr(
+        "ciphercache.daemon.server._get_peer_credentials",
+        lambda _conn: (os.getuid(), os.getgid()),
+    )
 
     try:
         client, server_sock = socket.socketpair()
@@ -107,11 +115,45 @@ def test_handle_connection_ignores_broken_pipe() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
-def test_rejects_large_frame() -> None:
+def test_handle_connection_rejects_when_peer_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    data_dir = _short_temp_dir()
+    config = DaemonConfig(data_dir=data_dir, write_agent_metadata=False)
+    state = DaemonState(config=config)
+    server = UnixSocketServer(config=config, state=state)
+
+    def fake_get_peer(_conn: socket.socket) -> tuple[int | None, int | None]:
+        return None, None
+
+    monkeypatch.setattr("ciphercache.daemon.server._get_peer_credentials", fake_get_peer)
+
+    try:
+        client, server_sock = socket.socketpair()
+        try:
+            request = {"version": "v0", "id": "ping", "type": "request", "op": "ping", "payload": {}}
+            client.sendall(encode_message(request))
+            server._handle_connection(server_sock)
+            response_frame = client.recv(4096)
+        finally:
+            client.close()
+            server_sock.close()
+
+        response = decode_single_frame(response_frame)
+        assert response["type"] == "error"
+        assert response["payload"]["code"] == ERROR_UNAUTHORIZED
+    finally:
+        rmtree(data_dir, ignore_errors=True)
+
+
+def test_rejects_large_frame(monkeypatch: pytest.MonkeyPatch) -> None:
     data_dir = _short_temp_dir()
     config = DaemonConfig(data_dir=data_dir, max_frame_bytes=32, write_agent_metadata=False)
     state = DaemonState(config=config)
     server = UnixSocketServer(config=config, state=state)
+
+    monkeypatch.setattr(
+        "ciphercache.daemon.server._get_peer_credentials",
+        lambda _conn: (os.getuid(), os.getgid()),
+    )
 
     try:
         client, server_sock = socket.socketpair()
@@ -165,3 +207,47 @@ def test_peer_credentials_match_current_user() -> None:
 
     assert uid == os.getuid()
     assert gid == os.getgid()
+
+
+def test_demo_daemon_state_seeds_secrets(tmp_path: Path) -> None:
+    """DemoDaemonState should seed demo secrets for requested names on unlock."""
+    config = DaemonConfig(data_dir=tmp_path)
+    state = DemoDaemonState(config=config)
+    state.unlock(60, ["service/api", "service/db"])
+    store = state.secrets.get("default", {})
+    assert "service/api" in store
+    assert store["service/api"]["demo"] is True
+    assert store["service/api"]["value"] == "demo:service/api"
+    assert "service/db" in store
+    assert store["service/db"]["value"] == "demo:service/db"
+
+
+def test_unlock_all_on_start_populates_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_unlock_all_on_start should load and cache all secrets from the store."""
+    store_config = KeePassXCConfig(database_path=Path("demo.kdbx"))
+    config = DaemonConfig(data_dir=tmp_path, store_config=store_config, unlock_all_ttl=3600)
+    state = DaemonState(config=config)
+
+    import ciphercache.daemon.runner as runner
+
+    def fake_load_all(_config: KeePassXCConfig) -> dict[str, dict[str, object]]:
+        return {
+            "service/api": {"title": "service/api", "password": "s3cret"},
+            "service/db": {"title": "service/db", "password": "dbpass"},
+        }
+
+    monkeypatch.setattr(runner, "load_all_secrets", fake_load_all)
+    _unlock_all_on_start(state)
+
+    assert state.locked is False
+    assert "service/api" in state.secrets["default"]
+    assert "service/db" in state.secrets["default"]
+    assert state.secrets["default"]["service/api"]["password"] == "s3cret"
+
+
+def test_unlock_all_on_start_requires_store_config(tmp_path: Path) -> None:
+    """_unlock_all_on_start should raise when store_config is None."""
+    config = DaemonConfig(data_dir=tmp_path)
+    state = DaemonState(config=config)
+    with pytest.raises(ValueError, match="store_config is required"):
+        _unlock_all_on_start(state)

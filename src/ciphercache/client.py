@@ -21,6 +21,7 @@ Version metadata (update when releasing):
 from __future__ import annotations
 
 import json
+import logging
 import socket
 import time
 from dataclasses import dataclass, field
@@ -28,6 +29,8 @@ from pathlib import Path
 from typing import Any
 
 from ciphercache.ipc.framing import decode_single_frame, encode_message
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -59,7 +62,7 @@ class ClientConfig:
         if self.socket_path is None:
             self.socket_path = self.data_dir / "ciphercached.sock"
         if self.ticket_path is None:
-            self.ticket_path = self.data_dir / "tickets" / "default.ticket"
+            self.ticket_path = self.data_dir / "tickets" / f"{self.client_name}.ticket"
 
 
 @dataclass(slots=True)
@@ -197,7 +200,8 @@ def _load_agent_socket_path(data_dir: Path) -> Path | None:
         return None
     try:
         payload = json.loads(agent_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        _LOGGER.debug("Failed to read agent.json at %s: %s", agent_path, exc)
         return None
     socket_path = payload.get("socket_path")
     if not isinstance(socket_path, str) or not socket_path:
@@ -207,6 +211,9 @@ def _load_agent_socket_path(data_dir: Path) -> Path | None:
 
 def _request_envelope(op: str, payload: dict[str, Any]) -> dict[str, object]:
     """Build an IPC request envelope."""
+    # Millisecond-timestamp ID is sufficient for single-threaded, single-client use.
+    # Collisions within the same ms are benign: the daemon processes one request per
+    # connection and does not deduplicate by ID.
     return {
         "version": "v0",
         "id": f"req-{int(time.time() * 1000)}",

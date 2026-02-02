@@ -41,7 +41,9 @@ encryption.
 ```
 
 Notes:
-- `id` correlates requests and responses.
+- `id` correlates requests and responses. MVP uses millisecond timestamps; collisions
+  are benign because the daemon processes one request per connection and does not
+  deduplicate by ID. Stronger IDs (e.g., UUID) may be used in a future version.
 - `type` is explicit even for errors.
 - `payload` is op-specific.
 

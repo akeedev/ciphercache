@@ -84,6 +84,7 @@ def test_find_keepassxc_cli_prefers_path(tmp_path: Path, monkeypatch: pytest.Mon
     cli_dir.mkdir(parents=True)
     cli_path = cli_dir / "keepassxc-cli"
     cli_path.write_text("", encoding="utf-8")
+    cli_path.chmod(0o755)
     monkeypatch.setenv("PATH", str(cli_dir))
     found = _find_keepassxc_cli([])
     assert found == cli_path
@@ -100,6 +101,7 @@ def test_find_keepassxc_cli_prefers_highest_version(tmp_path: Path, monkeypatch:
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
+        path.chmod(0o755)
     found = _find_keepassxc_cli([root])
     assert found == paths[1]
 

@@ -1,17 +1,33 @@
 """SPDX-License-Identifier: Apache-2.0
-Daemon state and configuration for ciphercache.
+Copyright (c) 2026 @drakee
+
+Provided "AS IS", without warranties or guarantees; use at your own risk.
+
+Module overview:
+- Daemon state and configuration for ciphercache.
+- Primary classes: `DaemonConfig` (runtime configuration) and `DaemonState` (in-memory session state).
+- `DaemonState` manages locked/unlocked transitions, TTL expiry, ticket issuance, and secret access.
+
+Version metadata (update when releasing):
+- Version: 0.1.0
+- Date: 2026-02-01
+- Author: @drakee
+- Repository: https://github.com/drakee/ciphercache
 """
 
 from __future__ import annotations
 
 import os
+import re
 import secrets
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from ciphercache.store.keepassxc import KeePassXCConfig
+
+
+_CLIENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 @dataclass(slots=True)
@@ -27,7 +43,7 @@ class DaemonConfig:
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0
     write_agent_metadata: bool = True
-    store_config: Optional[KeePassXCConfig] = None
+    store_config: KeePassXCConfig | None = None
     unlock_all_ttl: int | None = None
 
     def __post_init__(self) -> None:
@@ -113,10 +129,16 @@ class DaemonState:
 
     def issue_ticket(self, client_name: str) -> Path:
         """Create a new ticket for a client and return its file path."""
+        safe_name = _validate_client_name(client_name)
         token = secrets.token_urlsafe(32)
         tickets_dir = self.config.data_dir / "tickets"
         tickets_dir.mkdir(parents=True, exist_ok=True)
-        ticket_path = tickets_dir / f"{client_name}.ticket"
+        ticket_path = tickets_dir / f"{safe_name}.ticket"
+
+        tickets_root = tickets_dir.resolve()
+        ticket_resolved = ticket_path.resolve()
+        if tickets_root not in ticket_resolved.parents:
+            raise ValueError("Invalid client_name")
 
         fd = os.open(ticket_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -140,3 +162,16 @@ class DaemonState:
         if secret_name not in self.allowed_secrets:
             return None
         return self.secrets.get(store_alias, {}).get(secret_name)
+
+
+def _validate_client_name(client_name: str) -> str:
+    """Validate and return a safe client name for ticket files."""
+    if not isinstance(client_name, str) or not client_name:
+        raise ValueError("client_name must be a non-empty string")
+    if "/" in client_name or "\\" in client_name or "\x00" in client_name:
+        raise ValueError("client_name contains invalid characters")
+    if client_name in {".", ".."}:
+        raise ValueError("client_name is not allowed")
+    if not _CLIENT_NAME_RE.fullmatch(client_name):
+        raise ValueError("client_name must be ASCII alnum plus ._- and <= 64 chars")
+    return client_name

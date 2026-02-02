@@ -1,11 +1,22 @@
 """SPDX-License-Identifier: Apache-2.0
-TTL parsing utilities for ciphercache.
+Copyright (c) 2026 @drakee
+
+Provided "AS IS", without warranties or guarantees; use at your own risk.
+
+Module overview:
+- TTL parsing utilities for ciphercache.
+- Converts human-readable duration strings (e.g. "1h 30m") to seconds.
+
+Version metadata (update when releasing):
+- Version: 0.1.0
+- Date: 2026-02-01
+- Author: @drakee
+- Repository: https://github.com/drakee/ciphercache
 """
 
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 _UNIT_SECONDS = {
     "s": 1,
@@ -17,7 +28,7 @@ _UNIT_SECONDS = {
 _TOKEN_RE = re.compile(r"^(?P<value>\d+)(?P<unit>[smhd])$")
 
 
-def parse_ttl(value: str) -> Optional[int]:
+def parse_ttl(value: str) -> int | None:
     """Parse a human-readable TTL into seconds.
 
     Returns None for infinity.

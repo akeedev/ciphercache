@@ -32,4 +32,3 @@ environment variables by centralizing access in a local daemon.
 ## Security model (brief)
 - Protects against other local users via socket permissions and UID/GID checks.
 - Does not protect against malicious code running under the same user.
-"""

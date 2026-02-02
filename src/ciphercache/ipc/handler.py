@@ -1,5 +1,19 @@
 """SPDX-License-Identifier: Apache-2.0
-IPC request handling and dispatch for ciphercache.
+Copyright (c) 2026 @drakee
+
+Provided "AS IS", without warranties or guarantees; use at your own risk.
+
+Module overview:
+- IPC request handling and dispatch for ciphercache.
+- `handle_request` normalizes a raw dict into an `Envelope`, dispatches to per-op handlers,
+  and maps exceptions to error envelopes.
+- `process_frame` wraps frame decoding + handling for the server.
+
+Version metadata (update when releasing):
+- Version: 0.1.0
+- Date: 2026-02-01
+- Author: @drakee
+- Repository: https://github.com/drakee/ciphercache
 """
 
 from __future__ import annotations

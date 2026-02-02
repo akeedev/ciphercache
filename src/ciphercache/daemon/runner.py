@@ -142,7 +142,6 @@ def _unlock_all_on_start(state: DaemonState) -> None:
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the daemon with optional demo behavior."""
-    _ = argv
     args = _parse_args(argv)
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
     store_config = _build_store_config(args)

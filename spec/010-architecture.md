@@ -139,15 +139,17 @@ The mapping from store entries to secret names and JSON payloads is specified in
 
 ## Cache and Crypto (In-Memory)
 - `ciphercached` caches only the secrets requested at `unlock` to avoid repeated store access during a session.
-- Cache is protected with a per-unlock ephemeral **Session Master Key**.
-- Cache entries are stored as ciphertext blobs; decrypted only briefly per request.
 - Assumption: secrets are small (passwords, API keys, tokens) and few in typical developer use,
   so cache size is expected to be modest.
 
-Warning: In-memory encryption primarily reduces accidental exposure (e.g., crash dumps).
-It is not designed to defend against active, same-user code execution while unlocked.
+**MVP status:** The MVP stores cached secrets as plaintext dicts in daemon memory. This is
+acceptable given the MVP threat model (same-user attacker is explicitly out of scope).
 
-Cryptographic primitives (AEAD choice, key derivation, wipe strategy) are deferred to a future spec (TBD).
+**Future extension:** A per-unlock ephemeral **Session Master Key** could encrypt cache entries
+as ciphertext blobs, decrypted only briefly per request. This would primarily reduce accidental
+exposure (e.g., crash dumps) but is not designed to defend against active, same-user code
+execution while unlocked. Cryptographic primitives (AEAD choice, key derivation, wipe strategy)
+are deferred to a future spec (TBD).
 
 ## Policy and Authorization Model (Hook for MVP)
 - Architecture includes a `policy` abstraction:

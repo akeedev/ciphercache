@@ -18,12 +18,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Iterable
+from typing import Sequence
 
 from ciphercache.client import Client, ClientConfig
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments for the client tester."""
     parser = argparse.ArgumentParser(description="Run a simple client SDK test.")
     parser.add_argument(
@@ -52,7 +52,7 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Assume daemon was started with unlock-all-on-start.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def _parse_secrets(raw: str) -> list[str]:
@@ -60,10 +60,9 @@ def _parse_secrets(raw: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def main(argv: Iterable[str] | None = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Run a basic client flow against the daemon."""
-    _ = argv
-    args = _parse_args()
+    args = _parse_args(argv)
     secrets = _parse_secrets(args.secrets)
     if not secrets:
         raise ValueError("At least one secret name is required")

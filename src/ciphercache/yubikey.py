@@ -81,6 +81,6 @@ def _find_in_path(executable: str) -> Path | None:
         if not folder:
             continue
         candidate = Path(folder) / executable
-        if candidate.exists():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
             return candidate
     return None
