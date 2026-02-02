@@ -115,9 +115,38 @@ def test_handle_connection_ignores_broken_pipe() -> None:
         rmtree(data_dir, ignore_errors=True)
 
 
-def test_handle_connection_rejects_when_peer_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_handle_connection_allows_when_peer_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     data_dir = _short_temp_dir()
     config = DaemonConfig(data_dir=data_dir, write_agent_metadata=False)
+    state = DaemonState(config=config)
+    server = UnixSocketServer(config=config, state=state)
+
+    def fake_get_peer(_conn: socket.socket) -> tuple[int | None, int | None]:
+        return None, None
+
+    monkeypatch.setattr("ciphercache.daemon.server._get_peer_credentials", fake_get_peer)
+
+    try:
+        client, server_sock = socket.socketpair()
+        try:
+            request = {"version": "v0", "id": "ping", "type": "request", "op": "ping", "payload": {}}
+            client.sendall(encode_message(request))
+            server._handle_connection(server_sock)
+            response_frame = client.recv(4096)
+        finally:
+            client.close()
+            server_sock.close()
+
+        response = decode_single_frame(response_frame)
+        assert response["type"] == "response"
+        assert response["payload"]["ok"] is True
+    finally:
+        rmtree(data_dir, ignore_errors=True)
+
+
+def test_handle_connection_rejects_when_peer_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    data_dir = _short_temp_dir()
+    config = DaemonConfig(data_dir=data_dir, write_agent_metadata=False, require_peer_credentials=True)
     state = DaemonState(config=config)
     server = UnixSocketServer(config=config, state=state)
 

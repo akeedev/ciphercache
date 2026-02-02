@@ -96,6 +96,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default="INFO",
         help="Logging level (default: INFO).",
     )
+    parser.add_argument(
+        "--require-peer-credentials",
+        action="store_true",
+        help="Require peer UID/GID validation and fail if unavailable.",
+    )
     return parser
 
 
@@ -157,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         write_agent_metadata=not args.no_agent_metadata,
         store_config=store_config,
         unlock_all_ttl=unlock_all_ttl,
+        require_peer_credentials=args.require_peer_credentials,
     )
     state: DaemonState
     if args.demo:

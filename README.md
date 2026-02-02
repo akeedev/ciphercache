@@ -73,6 +73,7 @@ uv run python scripts/run_daemon.py \
   --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
+Use `--require-peer-credentials` to fail if the OS cannot provide UID/GID for the client.
 
 Unlock-all on startup (caches all entries at start):
 

@@ -136,7 +136,12 @@ class UnixSocketServer:
     def _handle_connection(self, conn: socket.socket) -> None:
         """Validate peer credentials, read a frame, and respond."""
         try:
-            _validate_peer(conn, self.config.expected_uid, self.config.expected_gid)
+            _validate_peer(
+                conn,
+                self.config.expected_uid,
+                self.config.expected_gid,
+                self.config.require_peer_credentials,
+            )
         except PermissionError as exc:
             error = _error_envelope(ERROR_UNAUTHORIZED, str(exc))
             conn.settimeout(self.config.write_timeout_seconds)
@@ -217,13 +222,24 @@ def _recv_exact(conn: socket.socket, length: int) -> bytes | None:
     return b"".join(chunks)
 
 
-def _validate_peer(conn: socket.socket, expected_uid: int | None, expected_gid: int | None) -> bool:
+def _validate_peer(
+    conn: socket.socket,
+    expected_uid: int | None,
+    expected_gid: int | None,
+    require_peer_credentials: bool,
+) -> bool:
     """Validate the peer credentials against expected UID/GID."""
     uid, gid = _get_peer_credentials(conn)
     if expected_uid is not None and uid is None:
-        raise PermissionError("Peer UID unavailable")
+        if require_peer_credentials:
+            raise PermissionError("Peer UID unavailable")
+        _LOGGER.warning("Peer UID unavailable; skipping UID/GID validation")
+        return True
     if expected_gid is not None and gid is None:
-        raise PermissionError("Peer GID unavailable")
+        if require_peer_credentials:
+            raise PermissionError("Peer GID unavailable")
+        _LOGGER.warning("Peer GID unavailable; skipping UID/GID validation")
+        return True
     if expected_uid is not None and uid != expected_uid:
         raise PermissionError("Peer UID mismatch")
     if expected_gid is not None and gid != expected_gid:
@@ -234,17 +250,24 @@ def _validate_peer(conn: socket.socket, expected_uid: int | None, expected_gid: 
 def _get_peer_credentials(conn: socket.socket) -> tuple[int | None, int | None]:
     """Return the peer UID/GID if available, otherwise (None, None)."""
     if hasattr(socket, "getpeereid"):
-        uid, gid = socket.getpeereid(conn)  # type: ignore[attr-defined]
-        return uid, gid
+        try:
+            uid, gid = socket.getpeereid(conn)  # type: ignore[attr-defined]
+            return uid, gid
+        except OSError as exc:
+            _LOGGER.debug("getpeereid failed: %s", exc)
+            return None, None
     try:
         creds = conn.getsockopt(socket.SOL_SOCKET, _SO_PEERCRED, 12)
-    except OSError:
+    except OSError as exc:
+        _LOGGER.debug("SO_PEERCRED failed: %s", exc)
         return None, None
     pid = int.from_bytes(creds[0:4], "little")
     uid = int.from_bytes(creds[4:8], "little")
     gid = int.from_bytes(creds[8:12], "little")
     _ = pid
     return uid, gid
+
+
 
 
 def _write_agent_metadata(path: Path, socket_path: Path, data_dir: Path) -> None:

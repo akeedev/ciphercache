@@ -45,6 +45,7 @@ or crypto internals.
 - Socket path: `${data_dir}/ciphercached.sock`.
 - Socket directory must be `0700` (owner-only).
 - Ticket directory is under `data_dir/tickets` (0600 ticket files).
+- Ticket file names are derived from `client_name` after validation (ASCII alnum plus `._-`, start with alnum, max 64 chars; no path separators or `.` / `..`).
 - Agent metadata (`agent.json`) is written to `data_dir/agent.json` (0600).
   It is intended for debugging and discovery.
 
@@ -86,6 +87,7 @@ or crypto internals.
 - Ticket values must not be logged.
 - Log a brief summary per request (op + payload keys). When present, log client_name.
 - Default log level for the daemon runner is INFO and should be configurable.
+- If peer credential lookup fails, log the failure at DEBUG with the OS error.
 
 ## Optional Unlock on Startup
 The daemon runner may support an option to unlock on startup, prompting for
@@ -128,6 +130,7 @@ Configuration is provided via a `DaemonConfig` structure:
 - `read_timeout_seconds: float` (default `5.0`)
 - `write_timeout_seconds: float` (default `5.0`)
 - `write_agent_metadata: bool` (default `True`)
+- `require_peer_credentials: bool` (default `False`)
 
 ## Modules and Classes (planned)
 - `ciphercache.daemon.server`
@@ -143,6 +146,9 @@ Configuration is provided via a `DaemonConfig` structure:
 - Daemon binds a Unix socket at the configured path and accepts connections.
 - Socket directory permissions are `0700`; socket file permissions are owner-only.
 - Peer UID/GID validation rejects non-owner clients.
+- If peer credentials are unavailable from the OS, the daemon logs a warning and
+  skips UID/GID validation (still relying on socket permissions and tickets), unless
+  `require_peer_credentials` is enabled.
 - A valid `ping` request yields `{"ok": true}` response.
 - Invalid frames yield `invalid_request`.
 - Requests larger than the max frame size are rejected.

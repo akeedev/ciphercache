@@ -42,6 +42,7 @@ Start the daemon in a terminal:
 ```bash
 uv run python scripts/run_daemon.py
 ```
+Use `--require-peer-credentials` to fail if the OS cannot provide UID/GID for the client.
 
 ### KeePassXC integration (unlock on request)
 ```bash
@@ -76,6 +77,7 @@ ticket_path = client.client_init("my_client")
 client.config.ticket_path = ticket_path
 client.load_ticket()
 ```
+Note: `client_name` must be ASCII alnum plus `._-`, start with alnum, and be <= 64 characters.
 
 ## Troubleshooting
 - If `unlock` appears to hang, check the daemon terminal for KeePassXC prompts.

@@ -39,6 +39,7 @@ class DaemonConfig:
     socket_path: Path | None = None
     expected_uid: int | None = None
     expected_gid: int | None = None
+    require_peer_credentials: bool = False
     max_frame_bytes: int = 1_000_000
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0

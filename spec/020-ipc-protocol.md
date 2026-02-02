@@ -98,6 +98,9 @@ Request payload:
   "client_name": "my_client"
 }
 ```
+Notes:
+- `client_name` must be ASCII alnum plus `._-`, start with alnum, and be <= 64 characters.
+- Names may not include path separators or `.` / `..`.
 Response payload:
 ```
 {

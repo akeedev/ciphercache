@@ -86,8 +86,8 @@ UX note:
 - `ciphercache.client.ClientConfig`
   - `data_dir: Path` (defaults to `~/Library/Application Support/ciphercache`)
   - `socket_path: Path | None`
-- `ticket_path: Path | None`
-- `client_name: str` (default `"default"`)
+  - `ticket_path: Path | None` (defaults to `${data_dir}/tickets/{client_name}.ticket`)
+  - `client_name: str` (default `"default"`)
   - `store_alias: str | None`
   - `max_frame_bytes: int` (default `1_000_000`)
   - `read_timeout_seconds: float` (default `5.0`)

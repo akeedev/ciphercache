@@ -97,6 +97,7 @@ Ticket lifetime:
 Ticket generation:
 - Tickets are created explicitly via the SDK `client_init(client_name)` (CLI optional later).
 - Tickets are stored as 0600 files in a per-client location.
+- `client_name` is validated to be a safe file name (ASCII alnum plus `._-`, start with alnum, max 64 chars; no path separators or `.` / `..`).
 
 Ticket format and storage details are deferred to a future spec (TBD).
 
@@ -113,6 +114,8 @@ MVP implements layers 0–2:
 ### Layer 1: OS peer credentials
 - Validate peer UID/GID from the OS for each connection.
 - Reject peers not matching the expected local user.
+- If peer credentials are unavailable, log a warning and continue (socket permissions + tickets still apply),
+  unless strict peer credential validation is enabled.
 
 ### Layer 2: Per-client session ticket
 - Require a valid per-client ticket for request authorization.
