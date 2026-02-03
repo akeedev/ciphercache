@@ -3,6 +3,8 @@
 # ciphercache Overview (000)
 
 ## Purpose
+Think "simple ssh-agent for secrets from a password manager"
+
 `ciphercache` provides a local secret agent which enables client software to retrieve
 secrets on demand from a local daemon, with minimal repeated user interaction during 
 active development. It is especially tailored for use in software development
@@ -16,24 +18,20 @@ and access a single secret store (KeePassXC) for obtaining secrets.
 - (Future) CLI command: `ccache`
 
 ## Problem Statement
-Common secret handling patterns (e.g., environment variables, dotfiles, ad-hoc encrypted 
-blobs) are convenient but often leak via logs, crash dumps, shell history, child processes,
-CI output, or accidental commits. `ciphercache` reduces these leak paths by centralizing
-secret access in a local agent and keeping secrets out of repositories and out of 
-long-lived process environments.
+Common secret handling patterns in software development (e.g., environment variables, dotfiles, ad-hoc encrypted blobs) are convenient but pose the risk of leakage via logs, crash dumps, shell history, child processes, CI/CD output, or accidental commits. 
+
+`ciphercache` aims to reduce these leak paths by centralizing secret access in a local agent and keeping secrets out of repositories and out of long-lived process environments.
 
 ## Goals
 - Keep plaintext secrets separated from client programs and out of Git repos and source code.
-- Allow programs to retrieve secrets on demand while requiring little user interaction.
-- Provide a local daemon (`ciphercached`) that can be unlocked with an explicit list of secrets
-  and then serve those secrets from an in-memory cache for the TTL.
+- Allow programs to retrieve secrets on demand while requiring little user interaction after initial unlock.
+- Provide a local daemon (`ciphercached`) that can be unlocked and populated with a list of secrets from a KeepassXC database and then serve those secrets from an in-memory cache for the TTL.
+- Supports unlock of KeepassXC files via password and/or YubiKey.
 - Support frequent client restarts (typical during development) without forcing repeated store unlocks.
 - Use local IPC (Unix domain sockets) as the primary transport.
 - Store secrets as structured key-value objects addressable by name (conceptually JSON; in Python this is a dict).
-- Keep the design simple and robust by relying on OS primitives rather than custom crypto 
-  protocols.
-- Assume secrets are small (passwords, API keys, tokens) and low in count per developer, so cache
-  size is modest in typical workflows.
+- Keep the design simple and robust by relying on OS primitives rather than custom crypto protocols.
+- Assume secrets are small (passwords, API keys, tokens) and low in count per developer, so cache  size is modest in typical workflows.
 
 
 ## Non-Goals
