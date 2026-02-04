@@ -31,6 +31,7 @@ from typing import Iterable
 
 from ciphercache.yubikey import detect_yubikey
 
+
 @dataclass(slots=True)
 class KeePassXCConfig:
     """Configuration for KeePassXC CLI export."""

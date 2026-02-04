@@ -23,8 +23,6 @@ from typing import Any, cast
 
 from ciphercache.daemon.state import DaemonState
 from ciphercache.ipc.framing import decode_single_frame, encode_message
-from ciphercache.ttl import parse_ttl
-from ciphercache.store.keepassxc import load_secrets
 
 
 ERROR_INVALID_REQUEST = "invalid_request"
@@ -107,6 +105,8 @@ def handle_request(state: DaemonState, raw: dict[str, Any]) -> dict[str, Any]:
         return _error(request.message_id, request.op, ERROR_INVALID_REQUEST, "Invalid message type")
 
     state.expire_if_needed()
+    if state.shutdown_requested:
+        return _error(request.message_id, request.op, ERROR_LOCKED, "Daemon is locked")
 
     handler = _HANDLERS.get(request.op)
     if handler is None:
@@ -146,29 +146,6 @@ def _require_string(payload: dict[str, Any], key: str) -> str:
     return value
 
 
-def _require_string_list(payload: dict[str, Any], key: str) -> list[str]:
-    """Return a required list of non-empty strings from a payload."""
-    value = payload.get(key)
-    if not isinstance(value, list) or not value:
-        raise ValueError(f"Missing or invalid '{key}'")
-    items: list[str] = []
-    for item in value:
-        if not isinstance(item, str) or not item:
-            raise ValueError(f"Missing or invalid '{key}'")
-        items.append(item)
-    return items
-
-
-def _optional_ttl_seconds(payload: dict[str, Any], state: DaemonState) -> int | None:
-    """Return TTL seconds from payload or daemon default if omitted."""
-    ttl_value = payload.get("ttl")
-    if ttl_value is None:
-        return state.config.unlock_ttl_default
-    if not isinstance(ttl_value, str) or not ttl_value:
-        raise ValueError("Missing or invalid 'ttl'")
-    return parse_ttl(ttl_value)
-
-
 def _handle_ping(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle ping requests."""
     _ = state
@@ -184,31 +161,9 @@ def _handle_status(state: DaemonState, request: Envelope) -> dict[str, Any]:
     return _response(request, payload)
 
 
-def _handle_unlock(state: DaemonState, request: Envelope) -> dict[str, Any]:
-    """Handle unlock requests."""
-    secret_names = _require_string_list(request.payload, "secrets")
-    ttl_seconds = _optional_ttl_seconds(request.payload, state)
-    if state.config.store_config is not None:
-        secrets = load_secrets(state.config.store_config, secret_names)
-        if len(secrets) != len(secret_names):
-            raise LookupError("Secret not found")
-        state.unlock(ttl_seconds, secret_names)
-        store_alias = state.active_store_alias or state.config.store_alias_default
-        state.secrets[store_alias] = secrets
-    else:
-        state.unlock(ttl_seconds, secret_names)
-    return _response(request, {"ok": True})
-
-
-def _handle_lock(state: DaemonState, request: Envelope) -> dict[str, Any]:
-    """Handle lock requests."""
-    state.lock()
-    return _response(request, {"ok": True})
-
-
-def _handle_close_store(state: DaemonState, request: Envelope) -> dict[str, Any]:
-    """Handle close_store requests."""
-    state.close_store()
+def _handle_shutdown(state: DaemonState, request: Envelope) -> dict[str, Any]:
+    """Handle shutdown requests."""
+    state.request_shutdown()
     return _response(request, {"ok": True})
 
 
@@ -227,16 +182,8 @@ def _handle_get_secret(state: DaemonState, request: Envelope) -> dict[str, Any]:
     if not state.validate_ticket(ticket):
         raise PermissionError("Invalid ticket")
 
-    store_alias = request.payload.get("store")
-    if store_alias is None:
-        store_alias = state.active_store_alias
-    if not isinstance(store_alias, str) or not store_alias:
-        raise ValueError("Missing or invalid 'store'")
-    if state.active_store_alias and store_alias != state.active_store_alias:
-        raise LookupError("Unknown store alias")
-
     secret_name = _require_string(request.payload, "secret_name")
-    secret = state.get_secret(store_alias, secret_name)
+    secret = state.get_secret(secret_name)
     if secret is None:
         raise LookupError("Secret not found")
 
@@ -246,9 +193,7 @@ def _handle_get_secret(state: DaemonState, request: Envelope) -> dict[str, Any]:
 _HANDLERS = {
     "ping": _handle_ping,
     "status": _handle_status,
-    "unlock": _handle_unlock,
-    "lock": _handle_lock,
-    "close_store": _handle_close_store,
     "client_init": _handle_client_init,
     "get_secret": _handle_get_secret,
+    "shutdown": _handle_shutdown,
 }

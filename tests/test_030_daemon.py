@@ -9,7 +9,7 @@ from shutil import rmtree
 
 import pytest
 
-from ciphercache.daemon.runner import DemoDaemonState, _unlock_all_on_start
+from ciphercache.daemon.runner import _unlock_on_start
 from ciphercache.daemon.server import UnixSocketServer
 from ciphercache.daemon.state import DaemonConfig, DaemonState
 from ciphercache.ipc.framing import decode_single_frame, encode_message
@@ -238,23 +238,10 @@ def test_peer_credentials_match_current_user() -> None:
     assert gid == os.getgid()
 
 
-def test_demo_daemon_state_seeds_secrets(tmp_path: Path) -> None:
-    """DemoDaemonState should seed demo secrets for requested names on unlock."""
-    config = DaemonConfig(data_dir=tmp_path)
-    state = DemoDaemonState(config=config)
-    state.unlock(60, ["service/api", "service/db"])
-    store = state.secrets.get("default", {})
-    assert "service/api" in store
-    assert store["service/api"]["demo"] is True
-    assert store["service/api"]["value"] == "demo:service/api"
-    assert "service/db" in store
-    assert store["service/db"]["value"] == "demo:service/db"
-
-
-def test_unlock_all_on_start_populates_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_unlock_all_on_start should load and cache all secrets from the store."""
+def test_unlock_on_start_populates_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_unlock_on_start should load and cache all secrets from the store."""
     store_config = KeePassXCConfig(database_path=Path("demo.kdbx"))
-    config = DaemonConfig(data_dir=tmp_path, store_config=store_config, unlock_all_ttl=3600)
+    config = DaemonConfig(data_dir=tmp_path, store_config=store_config, ttl_seconds=3600)
     state = DaemonState(config=config)
 
     import ciphercache.daemon.runner as runner
@@ -266,17 +253,34 @@ def test_unlock_all_on_start_populates_cache(tmp_path: Path, monkeypatch: pytest
         }
 
     monkeypatch.setattr(runner, "load_all_secrets", fake_load_all)
-    _unlock_all_on_start(state)
+    _unlock_on_start(state, demo=False)
 
     assert state.locked is False
-    assert "service/api" in state.secrets["default"]
-    assert "service/db" in state.secrets["default"]
-    assert state.secrets["default"]["service/api"]["password"] == "s3cret"
+    assert "service/api" in state.secrets
+    assert "service/db" in state.secrets
+    assert state.secrets["service/api"]["password"] == "s3cret"
 
 
-def test_unlock_all_on_start_requires_store_config(tmp_path: Path) -> None:
-    """_unlock_all_on_start should raise when store_config is None."""
+def test_unlock_on_start_requires_store_config(tmp_path: Path) -> None:
+    """_unlock_on_start should raise when store_config is None."""
     config = DaemonConfig(data_dir=tmp_path)
     state = DaemonState(config=config)
     with pytest.raises(ValueError, match="store_config is required"):
-        _unlock_all_on_start(state)
+        _unlock_on_start(state, demo=False)
+
+
+def test_unlock_on_start_demo_overrides_secrets(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store_config = KeePassXCConfig(database_path=Path("demo.kdbx"))
+    config = DaemonConfig(data_dir=tmp_path, store_config=store_config)
+    state = DaemonState(config=config)
+
+    import ciphercache.daemon.runner as runner
+
+    def fake_load_all(_config: KeePassXCConfig) -> dict[str, dict[str, object]]:
+        return {"service/api": {"password": "s3cret"}}
+
+    monkeypatch.setattr(runner, "load_all_secrets", fake_load_all)
+    _unlock_on_start(state, demo=True)
+
+    assert state.secrets["service/api"]["demo"] is True
+    assert state.secrets["service/api"]["value"] == "demo:service/api"

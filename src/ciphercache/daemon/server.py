@@ -172,6 +172,10 @@ class UnixSocketServer:
 
         conn.settimeout(self.config.write_timeout_seconds)
         _safe_send(conn, encode_message(response))
+        if self.state.shutdown_requested:
+            self._running = False
+            if self.listener is not None:
+                self.listener.close()
 
     def _handle_signal(self, signum: int, _frame: object | None) -> None:
         """Stop the accept loop and close the listener on signals."""
@@ -233,12 +237,12 @@ def _validate_peer(
     if expected_uid is not None and uid is None:
         if require_peer_credentials:
             raise PermissionError("Peer UID unavailable")
-        _LOGGER.warning("Peer UID unavailable; skipping UID/GID validation")
+        _LOGGER.debug("Peer UID unavailable; skipping UID/GID validation")
         return True
     if expected_gid is not None and gid is None:
         if require_peer_credentials:
             raise PermissionError("Peer GID unavailable")
-        _LOGGER.warning("Peer GID unavailable; skipping UID/GID validation")
+        _LOGGER.debug("Peer GID unavailable; skipping UID/GID validation")
         return True
     if expected_uid is not None and uid != expected_uid:
         raise PermissionError("Peer UID mismatch")

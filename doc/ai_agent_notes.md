@@ -5,7 +5,7 @@ It focuses on the running daemon (`ciphercached`) and the Python client SDK.
 
 ## Roles (short)
 - **Daemon (`ciphercached`)**: the only process that reads from the secret store.
-  It unlocks the store on demand and caches secrets in memory for a TTL.
+  It unlocks the store at startup and caches secrets in memory for a TTL.
 - **Client SDK**: connects over a local Unix socket, presents a ticket, and
   fetches secrets by name.
 
@@ -14,6 +14,7 @@ It focuses on the running daemon (`ciphercached`) and the Python client SDK.
 - Do **not** store secrets on disk or in long-lived environment variables.
 - Do **not** pass secret values via CLI arguments.
 - Do use the SDK to fetch secrets only when needed and keep them in memory.
+- Do use `SecretEnvelope` helpers (`reveal`, `use`) when a raw value is required.
 
 ## Prerequisites
 - `ciphercached` must be running locally for the current user.
@@ -33,10 +34,6 @@ The SDK handles discovery automatically when `ClientConfig` is default.
 - `client_name` must be ASCII alnum plus `._-`, start with alnum, max 64 chars.
 - Tickets are valid only while the daemon is unlocked (MVP semantics).
 
-## Unlock vs get_secret
-- **unlock**: explicitly unlocks the store for a TTL and caches a list of secrets.
-- **get_secret**: retrieves a cached secret by name; it never triggers unlock.
-
 ## Minimal SDK usage
 ```python
 from ciphercache import Client, ClientConfig
@@ -48,21 +45,16 @@ client = Client(config=ClientConfig())
 # client.config.ticket_path = ticket_path
 # client.load_ticket()
 
-# Unlock the store for 1 hour and cache only requested secrets.
-client.unlock(secrets=["service/api"])
-
 secret = client.get_secret("service/api")
-api_key = secret["api_key"]
+api_key = secret["api_key"].reveal()
 
-client.close_store()  # clears cached secrets on the daemon
+client.shutdown()  # clears cached secrets and exits the daemon
 ```
-
-Note: `unlock` may omit `ttl` and use the daemon default (default: infinity).
 
 ## Daemon start (if needed)
 Start the daemon in a terminal:
 ```bash
-uv run python scripts/run_daemon.py
+uv run python scripts/run_daemon.py --db-path testdata/demopasswords.kdbx
 ```
 If the store requires a password or YubiKey, the prompt appears in the daemon
 terminal, not in the client process.
@@ -74,6 +66,5 @@ terminal, not in the client process.
   daemon is unlocked.
 
 ## Failure modes (common)
-- `unlock` appears to hang: check the daemon terminal for KeePassXC prompts.
-- `get_secret` fails: ensure the name was included in the `unlock` secret list
-  and the TTL has not expired.
+- Startup appears to hang: check the daemon terminal for KeePassXC prompts.
+- `get_secret` fails: ensure the entry exists in the database and the TTL has not expired.

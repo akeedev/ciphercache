@@ -26,17 +26,6 @@ from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
 from ciphercache.store.keepassxc import KeePassXCConfig, load_all_secrets
 
 
-class DemoDaemonState(DaemonState):
-    """DaemonState that seeds demo secrets on unlock (development only)."""
-
-    def unlock(self, ttl_seconds: int | None, secrets: list[str], store_alias: str | None = None) -> None:
-        """Unlock and seed demo secrets for the requested names."""
-        super().unlock(ttl_seconds, secrets, store_alias)
-        store = self.secrets.setdefault(self.active_store_alias or self.config.store_alias_default, {})
-        for name in secrets:
-            store[name] = {"demo": True, "value": f"demo:{name}"}
-
-
 def _build_parser() -> argparse.ArgumentParser:
     """Build the argument parser for the daemon runner."""
     parser = argparse.ArgumentParser(description="Run the ciphercached daemon.")
@@ -54,22 +43,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--demo",
         action="store_true",
-        help="Seed requested secrets with demo values after unlock.",
+        help="Replace loaded secrets with demo placeholders after startup unlock.",
     )
     parser.add_argument(
-        "--unlock-all-on-start",
-        action="store_true",
-        help="Unlock and cache all secrets on startup (requires store config).",
-    )
-    parser.add_argument(
-        "--unlock-ttl",
+        "--ttl",
         default=None,
-        help="TTL for unlock-all-on-start (e.g., 1h, 30m). Default: infinity.",
-    )
-    parser.add_argument(
-        "--unlock-ttl-default",
-        default=None,
-        help="Default TTL for unlock requests when omitted (e.g., 1h, 30m). Default: infinity.",
+        help="Session TTL for the daemon (e.g., 1h, 30m). Default: infinity.",
     )
     parser.add_argument(
         "--db-path",
@@ -114,11 +93,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return _build_parser().parse_args(argv)
 
 
-def _run_server(config: DaemonConfig, state: DaemonState, unlock_all_on_start: bool) -> None:
+def _run_server(config: DaemonConfig, state: DaemonState, demo: bool) -> None:
     """Create and run the Unix socket server forever."""
     server = UnixSocketServer(config=config, state=state)
-    if unlock_all_on_start:
-        _unlock_all_on_start(state)
+    _unlock_on_start(state, demo)
     server.serve_forever()
 
 
@@ -135,19 +113,16 @@ def _build_store_config(args: argparse.Namespace) -> KeePassXCConfig | None:
     )
 
 
-def _unlock_all_on_start(state: DaemonState) -> None:
+def _unlock_on_start(state: DaemonState, demo: bool) -> None:
     """Unlock the store and cache all entries (startup mode)."""
     config = state.config.store_config
     if config is None:
-        raise ValueError("store_config is required for unlock-all-on-start")
+        raise ValueError("store_config is required for startup unlock")
     secrets = load_all_secrets(config)
-    names = list(secrets.keys())
-    ttl_seconds = None
-    if state.config.unlock_all_ttl is not None:
-        ttl_seconds = state.config.unlock_all_ttl
-    state.unlock(ttl_seconds, names)
-    for name, payload in secrets.items():
-        state.secrets.setdefault(state.active_store_alias or state.config.store_alias_default, {})[name] = payload
+    if demo:
+        secrets = {name: {"demo": True, "value": f"demo:{name}"} for name in secrets.keys()}
+    state.unlock(state.config.ttl_seconds)
+    state.secrets = secrets
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -155,32 +130,22 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = _parse_args(argv)
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO))
     store_config = _build_store_config(args)
-    if args.unlock_all_on_start and store_config is None:
-        raise ValueError("--unlock-all-on-start requires --db-path")
-    unlock_all_ttl = None
-    if args.unlock_ttl:
+    if store_config is None:
+        raise ValueError("--db-path is required")
+    ttl_seconds = None
+    if args.ttl:
         from ciphercache.ttl import parse_ttl
 
-        unlock_all_ttl = parse_ttl(args.unlock_ttl)
-    unlock_ttl_default = None
-    if args.unlock_ttl_default:
-        from ciphercache.ttl import parse_ttl
-
-        unlock_ttl_default = parse_ttl(args.unlock_ttl_default)
+        ttl_seconds = parse_ttl(args.ttl)
     config = DaemonConfig(
         data_dir=args.data_dir,
         write_agent_metadata=not args.no_agent_metadata,
         store_config=store_config,
-        unlock_all_ttl=unlock_all_ttl,
-        unlock_ttl_default=unlock_ttl_default,
+        ttl_seconds=ttl_seconds,
         require_peer_credentials=args.require_peer_credentials,
     )
-    state: DaemonState
-    if args.demo:
-        state = DemoDaemonState(config=config)
-    else:
-        state = DaemonState(config=config)
-    _run_server(config, state, args.unlock_all_on_start)
+    state = DaemonState(config=config)
+    _run_server(config, state, args.demo)
 
 
 if __name__ == "__main__":

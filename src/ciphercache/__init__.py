@@ -15,6 +15,7 @@ Version metadata (update when releasing):
 
 from ciphercache.client import Client, ClientConfig, Status
 from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
+from ciphercache.secret import Secret, SecretEnvelope
 from ciphercache.yubikey import detect_yubikey, is_ykman_available
 
 __all__ = [
@@ -24,6 +25,8 @@ __all__ = [
     "DaemonConfig",
     "DaemonState",
     "UnixSocketServer",
+    "Secret",
+    "SecretEnvelope",
     "detect_yubikey",
     "is_ykman_available",
 ]

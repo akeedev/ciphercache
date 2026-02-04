@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from ciphercache.ipc.framing import decode_single_frame, encode_message
+from ciphercache.secret import SecretEnvelope
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,11 +50,9 @@ class ClientConfig:
     socket_path: Path | None = None
     ticket_path: Path | None = None
     client_name: str = "default"
-    store_alias: str | None = None
     max_frame_bytes: int = 1_000_000
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0
-    unlock_timeout_seconds: float = 300.0
     retries: int = 3
     retry_backoff_seconds: float = 0.1
 
@@ -109,29 +108,9 @@ class Client:
         ttl_remaining = ttl_value
         return Status(locked=locked, ttl_remaining_seconds=ttl_remaining)
 
-    def unlock(self, ttl: str | None = None, secrets: list[str] | None = None) -> bool:
-        """Unlock the daemon and cache the specified secrets."""
-        if secrets is None and isinstance(ttl, list):
-            secrets = ttl
-            ttl = None
-        if not secrets:
-            raise ValueError("secrets must be non-empty")
-        if ttl is not None and (not isinstance(ttl, str) or not ttl):
-            raise ValueError("ttl must be a non-empty string when provided")
-        payload: dict[str, Any] = {"secrets": secrets}
-        if ttl is not None:
-            payload["ttl"] = ttl
-        response = self.request("unlock", payload, read_timeout_seconds=self.config.unlock_timeout_seconds)
-        return bool(response.get("ok"))
-
-    def lock(self) -> bool:
-        """Lock the daemon and clear cached secrets."""
-        response = self.request("lock", {})
-        return bool(response.get("ok"))
-
-    def close_store(self) -> bool:
-        """Close the active store, clearing cached secrets but preserving tickets."""
-        response = self.request("close_store", {})
+    def shutdown(self) -> bool:
+        """Request daemon shutdown and secret cache wipe."""
+        response = self.request("shutdown", {})
         return bool(response.get("ok"))
 
     def client_init(self, client_name: str) -> Path:
@@ -143,21 +122,19 @@ class Client:
             raise ValueError("Missing ticket_path in response")
         return Path(ticket_path)
 
-    def get_secret(self, name: str) -> dict[str, object]:
-        """Fetch a secret by name from the daemon."""
+    def get_secret(self, name: str) -> SecretEnvelope:
+        """Fetch a secret by name from the daemon as a SecretEnvelope."""
         payload = self._build_get_secret_payload(name)
         try:
             response = self.request("get_secret", payload)
         except PermissionError:
             ticket = self._refresh_ticket()
             payload = {"ticket": ticket, "secret_name": name}
-            if self.config.store_alias:
-                payload["store"] = self.config.store_alias
             response = self.request("get_secret", payload)
         secret = response.get("secret")
         if not isinstance(secret, dict):
             raise ValueError("Missing secret in response")
-        return secret
+        return SecretEnvelope.from_payload(secret)
 
     def _ensure_ticket(self) -> str:
         """Ensure a client ticket exists, auto-initializing if needed."""
@@ -172,8 +149,6 @@ class Client:
         """Build the get_secret payload with a valid ticket."""
         ticket = self._ticket or self._ensure_ticket()
         payload: dict[str, Any] = {"ticket": ticket, "secret_name": name}
-        if self.config.store_alias:
-            payload["store"] = self.config.store_alias
         return payload
 
     def _refresh_ticket(self) -> str:

@@ -7,7 +7,7 @@
 - [x] TTL parsing and enforcement
 - [x] Client SDK
 - [x] KeePassXC XML export parsing
-- [x] KeePassXC integration wired to unlock
+- [x] KeePassXC integration wired to startup unlock
 
 ## Security & safety
 - [x] Socket directory permissions (0700)
