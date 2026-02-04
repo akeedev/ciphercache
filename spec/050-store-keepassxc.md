@@ -5,7 +5,7 @@ Define how `ciphercached` fetches secrets from a local KeePassXC database using
 `keepassxc-cli`, with a single unlock prompt and in-memory parsing.
 
 ## Scope (MVP)
-- Use `keepassxc-cli export --format xml` to read the database once per unlock.
+- Use `keepassxc-cli export --format xml` to read the database once per daemon startup.
 - Capture export output in memory (stdout), never write plaintext to disk.
 - Parse XML in memory, then cache only the requested secrets.
 - Support YubiKey challenge-response unlocking.
@@ -19,22 +19,15 @@ Define how `ciphercached` fetches secrets from a local KeePassXC database using
 
 ## Rationale
 `keepassxc-cli show` requires a prompt per entry. `export` allows a single unlock
-followed by an in-memory parse of all entries. We then filter to only the requested
-secrets, minimizing exposure and latency after unlock.
+followed by an in-memory parse of all entries, minimizing exposure and latency after unlock.
 
-## Unlock Flow (MVP)
-1. Client requests `unlock` with a non-empty list of secret names.
-2. Daemon executes:
+## Startup Unlock Flow (MVP)
+1. Daemon executes at startup:
    ```
    keepassxc-cli export --format xml [--key-file <path>] [--yubikey <slot[:serial]>] [--no-password] <db_path>
    ```
-3. Daemon captures stdout (XML) in memory, parses entries, and extracts only the requested secrets.
-4. Daemon closes the process, wipes in-memory XML, and caches the requested secrets only.
-
-Unlock-all mode (daemon startup):
-- When enabled at startup, the daemon exports the database once and caches all entries.
-- `get_secret` may return any cached entry without a per-secret allowlist.
-- The startup unlock may accept an optional TTL; default is infinity.
+2. Daemon captures stdout (XML) in memory, parses entries, and caches all entries.
+3. Daemon closes the process and wipes in-memory XML.
 
 Parsing note:
 - The CLI may emit localized prompts before the XML. The parser must locate the first `<?xml`
@@ -46,7 +39,7 @@ Parsing note:
 - No plaintext export is written to disk.
 - No secrets are logged.
 - `keepassxc-cli` is executed without leaking secrets via arguments or logs.
-- Secrets are cached only for the current TTL and only for requested names.
+- Secrets are cached only for the current TTL.
 
 ## Configuration
 Store configuration is provided via `DaemonConfig` or a dedicated store config and
@@ -92,19 +85,25 @@ Notes on XML fields:
   - `KeePassXCConfig`: paths and unlock parameters for `keepassxc-cli`.
   - `KeePassXCClient`: executes CLI export and returns parsed entries.
   - `KeePassXCParser`: parses XML and extracts requested entries by title.
-  - `load_secrets(config, names) -> dict[str, dict[str, object]]`: main entrypoint used by daemon unlock.
-  - `load_all_secrets(config) -> dict[str, dict[str, object]]`: used for unlock-all startup mode.
+  - `load_all_secrets(config) -> dict[str, dict[str, object]]`: used for startup cache.
 
 ## Error Handling
-- Invalid DB path or CLI failure → `internal_error` or `invalid_request` (with safe message).
-- Unlock failure (wrong key/YubiKey) → `invalid_request` (do not expose details).
-- Requested secret not found → `not_found` for that secret (daemon caches none).
+- Invalid DB path or CLI failure → log error and exit daemon with non-zero status.
+- Unlock failure (wrong key/YubiKey) → log error and exit daemon with non-zero status.
+- Malformed XML export (parse error) → log error and exit daemon with non-zero status.
+- Empty or incomplete XML export → log error and exit daemon with non-zero status.
+- Requested secret not found (during `get_secret` request) → return `not_found` error to client.
+
+Rationale: Startup errors prevent the daemon from entering a valid unlocked state, so the daemon
+must exit rather than serve requests. Parse failures indicate a corrupted database or incompatible
+KeePassXC version.
 
 ## Acceptance Criteria (MVP)
-- Unlock with a list of secrets triggers a single KeePassXC prompt and caches only those secrets.
+- Startup unlock triggers a single KeePassXC prompt and caches all secrets.
 - No plaintext export files are written to disk.
 - `keepassxc-cli export` output is handled in memory and discarded after parsing.
-- Requests for secrets not in the allowlist return `not_found`.
+- Malformed or empty XML exports cause the daemon to log an error and exit with non-zero status.
+- Parsing locates the first `<?xml` tag and ignores any preceding localized prompts.
 
 ## Test Data and Demos
 - `testdata/demopasswords.export.xml` is a plaintext export used for parser unit tests.

@@ -53,7 +53,8 @@ client = Client(config=config)
 # Unlock the daemon and cache the required secrets.
 # Requires the daemon to run in demo mode or with KeePassXC configuration.
 # Unlock may take time due to password/YubiKey prompts; adjust unlock_timeout_seconds if needed.
-client.unlock("1h", ["service/api"])
+# If ttl is omitted, the daemon default is used (default: infinity).
+client.unlock(secrets=["service/api"])
 
 # Fetch a cached secret.
 secret = client.get_secret("service/api")

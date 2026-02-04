@@ -38,4 +38,4 @@ Provide an optional YubiKey autodetection mechanism for KeePassXC unlocks, using
 ## Acceptance Criteria
 - `--yubikey auto` works only when `ykman` is installed.
 - Autodetect fails with clear errors on 0 or >1 devices.
-- Autodetect module is used by the daemon runner and SDK.
+- Autodetect module is used by the daemon runner.

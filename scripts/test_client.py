@@ -34,8 +34,8 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--ttl",
-        default="1h",
-        help="TTL for unlock (default: 1h).",
+        default=None,
+        help="TTL for unlock (default: daemon default).",
     )
     parser.add_argument(
         "--secrets",

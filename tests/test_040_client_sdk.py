@@ -10,7 +10,7 @@ from shutil import rmtree
 import pytest
 
 from ciphercache.client import Client, ClientConfig, Status, _load_agent_socket_path
-from ciphercache.ipc.framing import encode_message
+from ciphercache.ipc.framing import decode_single_frame, encode_message
 
 
 def _short_temp_dir() -> Path:
@@ -92,6 +92,42 @@ def _serve_sequence(socket_path: Path, responses: list[dict[str, object]]) -> th
     return thread
 
 
+def _serve_once_capture(
+    socket_path: Path,
+    response_envelope: dict[str, object],
+    captured: dict[str, object],
+) -> threading.Thread:
+    """Start a one-shot server that captures the request envelope."""
+    socket_path.parent.mkdir(parents=True, exist_ok=True)
+    if socket_path.exists():
+        socket_path.unlink()
+
+    def run() -> None:
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            listener.bind(str(socket_path))
+            listener.listen(1)
+            conn, _ = listener.accept()
+            try:
+                length_prefix = _recv_exact(conn, 4)
+                if len(length_prefix) == 4:
+                    length = int.from_bytes(length_prefix, "big")
+                    payload = _recv_exact(conn, length)
+                    frame = length_prefix + payload
+                    captured["request"] = decode_single_frame(frame)
+                conn.sendall(encode_message(response_envelope))
+            finally:
+                conn.close()
+        finally:
+            listener.close()
+            if socket_path.exists():
+                socket_path.unlink()
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    return thread
+
+
 def test_status_returns_typed_dataclass() -> None:
     """Ensure status returns a typed Status object."""
     data_dir = _short_temp_dir()
@@ -159,6 +195,33 @@ def test_unlock_requires_non_empty_secrets() -> None:
         with pytest.raises(ValueError):
             client.unlock("5s", [])
     finally:
+        rmtree(data_dir, ignore_errors=True)
+
+
+def test_unlock_omits_ttl_when_not_provided() -> None:
+    """Unlock should omit ttl when caller relies on daemon default."""
+    data_dir = _short_temp_dir()
+    socket_path = data_dir / "ciphercached.sock"
+    response: dict[str, object] = {
+        "version": "v0",
+        "id": "unlock",
+        "type": "response",
+        "op": "unlock",
+        "payload": {"ok": True},
+    }
+    captured: dict[str, object] = {}
+    thread = _serve_once_capture(socket_path, response, captured)
+    try:
+        client = Client(config=ClientConfig(data_dir=data_dir))
+        assert client.unlock(secrets=["service/api"]) is True
+        request = captured.get("request")
+        assert isinstance(request, dict)
+        payload = request.get("payload")
+        assert isinstance(payload, dict)
+        assert payload.get("secrets") == ["service/api"]
+        assert "ttl" not in payload
+    finally:
+        thread.join(timeout=1.0)
         rmtree(data_dir, ignore_errors=True)
 
 

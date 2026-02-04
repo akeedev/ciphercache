@@ -1,7 +1,7 @@
 # ciphercache IPC Protocol (020)
 
 ## Purpose
-Define the local IPC protocol between clients, `ccache`, and `ciphercached`.
+Define the local IPC protocol between clients and `ciphercached`.
 This spec focuses on message framing, envelope shape, and a minimal request/response
 schema. It does not define the full secret store mapping or crypto choices.
 
@@ -17,7 +17,7 @@ schema. It does not define the full secret store mapping or crypto choices.
 
 ## Transport
 - Unix domain socket.
-- Socket path is stable and defined in a later spec.
+- Socket path is stable and defined in `spec/030-daemon.md`.
 
 ## Framing
 Length-prefixed JSON
@@ -27,15 +27,14 @@ Length-prefixed JSON
 
 ## Message Envelope (v0)
 All messages are JSON objects with a stable envelope. The API surface in Python should
-use dicts; dicts are serialized to JSON for IPC transport and to a byte stream for in-memory
-encryption.
+use dicts; dicts are serialized to JSON for IPC transport.
 
 ```
 {
   "version": "v0",
   "id": "uuid",
   "type": "request|response|error",
-  "op": "unlock|lock|close_store|status|client_init|get_secret|ping",
+  "op": "shutdown|status|client_init|get_secret|ping",
   "payload": { ... }
 }
 ```
@@ -59,28 +58,12 @@ Response:
 ```
 
 ### `unlock`
-Request payload:
-```
-{
-  "ttl": "5s | 1h | 3d | 1h 30m | infinity",
-  "secrets": ["service/api", "service/db"]
-}
-```
-Notes:
-- Store selection is out-of-band to IPC (CLI/daemon configuration) and uses a store alias.
-- TTL expiry is enforced lazily: after expiry, the next request must be rejected (typically
-  with `locked`), and the daemon may transition to locked state at that time.
-- `secrets` is the explicit allowlist to fetch and cache during unlock. It must be
-  a non-empty list of secret names; missing or empty lists are rejected.
+Removed in current design. The daemon unlocks the store at startup only.
 
-### `lock`
-Request payload: empty object.
-
-### `close_store`
+### `shutdown`
 Request payload: empty object.
 Notes:
-- Clears cached secrets and allowed secret list without invalidating tickets.
-- Resets the active store alias.
+- Wipes cached secrets and exits the daemon.
 
 ### `status`
 Response payload:
@@ -99,8 +82,7 @@ Request payload:
 }
 ```
 Notes:
-- `client_name` must be ASCII alnum plus `._-`, start with alnum, and be <= 64 characters.
-- Names may not include path separators or `.` / `..`.
+- `client_name` validation is defined in `spec/010-architecture.md` (Ticket generation).
 Response payload:
 ```
 {
@@ -113,17 +95,13 @@ Request payload:
 ```
 {
   "ticket": "opaque-token",
-  "secret_name": "service/api",
-  "store": "default"
+  "secret_name": "service/api"
 }
 ```
 Notes:
-- `store` is a store alias (not a filesystem path).
-- If omitted, the daemon uses the single active store (MVP default).
-- Rationale: aliases keep the IPC and SDK stable while enabling multiple stores later without
-  exposing filesystem paths to clients.
+- MVP supports exactly one KeePassXC database per daemon instance.
 - `get_secret` must not trigger store unlock; if the daemon is locked, it returns `locked`.
-- TTL expiry is enforced on each request; expired sessions return `locked` and clear cache/tickets.
+- TTL expiry is enforced on each request; expired sessions return `locked`, clear cache/tickets, and exit.
 Response payload:
 ```
 {
@@ -156,9 +134,9 @@ Errors are responses with `type: "error"`:
 - `ping` returns `{"ok": true}`.
 - `status` returns `locked` (boolean) and `ttl_remaining_seconds` (integer).
 - `get_secret` with an invalid ticket returns `code: "unauthorized"`.
-- `get_secret` with an unknown store alias returns `code: "not_found"`.
+- `get_secret` with an unknown secret name returns `code: "not_found"`.
 - Unknown `op` returns `code: "invalid_request"`.
-- `close_store` clears cached secrets while preserving tickets.
+- `shutdown` wipes cached secrets and exits the daemon.
 
 ## Example Exchange (v0)
 Request (`get_secret`):
@@ -170,8 +148,7 @@ Request (`get_secret`):
   "op": "get_secret",
   "payload": {
     "ticket": "opaque-token",
-    "secret_name": "service/api",
-    "store": "default"
+    "secret_name": "service/api"
   }
 }
 ```
@@ -213,3 +190,9 @@ Response (`status`):
   }
 }
 ```
+## TTL Semantics
+- TTL is configured on the daemon command line at startup.
+- TTL is a human-readable duration expressed in seconds, minutes, hours, days, or infinity.
+- Examples: `5s`, `1h`, `3d`, `1h 30m`, `infinity`.
+- TTL expiry is checked on-demand: when a request arrives after expiry, the daemon rejects the
+  request, clears cache/tickets, and exits.

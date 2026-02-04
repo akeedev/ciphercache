@@ -24,10 +24,11 @@ environment variables by centralizing access in a local daemon.
    from ciphercache import Client, ClientConfig
 
    client = Client(config=ClientConfig())
-   client.unlock("1h", ["service/api"])
+   client.unlock(secrets=["service/api"])
    secret = client.get_secret("service/api")
    print(secret)
    ```
+   Note: `unlock` may omit TTL and use the daemon default (default: infinity).
 
 ## Security model (brief)
 - Protects against other local users via socket permissions and UID/GID checks.

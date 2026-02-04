@@ -10,14 +10,15 @@
 from ciphercache import Client, ClientConfig
 
 client = Client(config=ClientConfig())
-client.unlock("1h", ["service/api"])
+client.unlock(secrets=["service/api"])
 secret = client.get_secret("service/api")
 print(secret["api_key"])
 client.close_store()
 ```
 Note: unlock may take time due to password/YubiKey prompts; adjust
 `unlock_timeout_seconds` if needed. TTL expiry is enforced on each request and
-locks the daemon, clearing cached secrets.
+locks the daemon, clearing cached secrets. If `ttl` is omitted, the daemon default
+TTL is used (default: infinity).
 
 ## Installing
 
@@ -43,6 +44,7 @@ Start the daemon in a terminal:
 uv run python scripts/run_daemon.py
 ```
 Use `--require-peer-credentials` to fail if the OS cannot provide UID/GID for the client.
+Use `--unlock-ttl-default 1h` to set the default TTL for unlock requests that omit `ttl`.
 
 ### KeePassXC integration (unlock on request)
 ```bash

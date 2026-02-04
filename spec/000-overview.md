@@ -6,32 +6,28 @@
 Think "simple ssh-agent for secrets from a password manager"
 
 `ciphercache` provides a local secret agent which enables client software to retrieve
-secrets on demand from a local daemon, with minimal repeated user interaction during 
-active development. It is especially tailored for use in software development
-and automation workflows where source code and repositories must not contain secrets 
-(API keys, passwords, tokens, etc.). The local daemon is designed to be lightweight 
-and access a single secret store (KeePassXC) for obtaining secrets.
+secrets from a local daemon with minimal repeated user interaction. It is especially tailored for use in software development and automation workflows where source code and repositories must not contain secrets (API keys, passwords, tokens, etc.). The local daemon is designed to be lightweight and access a single secret store (KeePassXC) for obtaining secrets.
 
 ## Naming
 - Project / repository: `ciphercache`
 - Daemon: `ciphercached`
-- (Future) CLI command: `ccache`
+- (Future) CLI command: `ccache` (currently not in scope)
 
 ## Problem Statement
-Common secret handling patterns in software development (e.g., environment variables, dotfiles, ad-hoc encrypted blobs) are convenient but pose the risk of leakage via logs, crash dumps, shell history, child processes, CI/CD output, or accidental commits. 
+Common secret handling patterns in software development (e.g., environment variables, dotfiles, ad-hoc encrypted blobs) are convenient but pose the risk of leakage via logs, crash dumps, shell history, child processes, CI/CD output, or accidental commits. This is even more so the case in AI assisted coding. 
 
 `ciphercache` aims to reduce these leak paths by centralizing secret access in a local agent and keeping secrets out of repositories and out of long-lived process environments.
 
 ## Goals
 - Keep plaintext secrets separated from client programs and out of Git repos and source code.
-- Allow programs to retrieve secrets on demand while requiring little user interaction after initial unlock.
-- Provide a local daemon (`ciphercached`) that can be unlocked and populated with a list of secrets from a KeepassXC database and then serve those secrets from an in-memory cache for the TTL.
+- Allow programs to retrieve secrets on demand while requiring little user interaction after initial daemon startup unlock.
+- Provide a local daemon (`ciphercached`) that opens a KeePassXC database at startup, caches secrets in memory, and serves those secrets for a configurable TTL.
 - Supports unlock of KeepassXC files via password and/or YubiKey.
-- Support frequent client restarts (typical during development) without forcing repeated store unlocks.
-- Use local IPC (Unix domain sockets) as the primary transport.
-- Store secrets as structured key-value objects addressable by name (conceptually JSON; in Python this is a dict).
+- Supports frequent client restarts (typical during development) without forcing repeated unlocks of the secure database.
+- Uses local IPC (Unix domain sockets) as the primary transport of secrets.
+- Store secrets as structured key-value objects addressable by name (conceptually and for IPC transport a secret is a JSON; in python it is a dict).
 - Keep the design simple and robust by relying on OS primitives rather than custom crypto protocols.
-- Assume secrets are small (passwords, API keys, tokens) and low in count per developer, so cache  size is modest in typical workflows.
+- Assume secrets are small (passwords, API keys, tokens) and low in count per developer, so cache size is modest in typical workflows.
 
 
 ## Non-Goals
@@ -46,11 +42,12 @@ Common secret handling patterns in software development (e.g., environment varia
 - Access control layers 0–2:
   - Layer 0: Unix socket filesystem permissions
   - Layer 1: OS peer credentials (UID/GID validation)
-  - Layer 2: per-client session tickets (opaque bearer tokens) stored as 0600 files
-- One external secret store integration: KeePassXC (exact integration details specified separately).
-  MVP supports a single active store, but the design allows adding multiple stores later.
-- In-memory caching in the daemon, protected by encryption via an ephemeral session master key.
-- (Future) Optional CLI commands to unlock/lock/status and initialize client tickets.
+  - Layer 2: per-client session tickets for client/daemon communication (opaque bearer tokens) stored as 0600 files
+- One external secret store integration: KeePassXC (exact integration details specified separately), one database cached in the daemon.
+- MVP supports only a single active store -- rationale: we can extract all required secrets into a single local KeePassXC database for ease of use and security. However, the design allows adding multiple stores later.
+- In-memory caching in the daemon, for now unprotected in memory (might in the future be protected by encryption via an ephemeral session master key.)
+- (Future) Optional CLI commands to shutdown/status and initialize client tickets, currently out of scope.
+- Secrets are always returned by the client in a secret "envelope" that allows secrets to be used easily but protects them from being accidentally logged or dumped.
 
 
 ## Threat Model (MVP)
@@ -74,14 +71,13 @@ Common secret handling patterns in software development (e.g., environment varia
 1. **Client software onboarding (one-time):**
    - Create a per-client-software ticket file (file mode 0600) via the SDK.
 2. **Session start (when secrets are needed):**
-   - Unlock the store via the SDK with `ttl` and `secrets`.
-   - `ciphercached` reads only the requested secrets from the store and populates an in-memory cache.
+   - Start the daemon; `ciphercached` opens the store once at startup and populates an in-memory cache.
 3. **Normal operation (frequent):**
    - Clients connect via Unix domain socket, present ticket, and request secrets by name.
    - Clients may restart repeatedly without additional store unlocking, until TTL expires.
 4. **Session end:**
-   - TTL expiry or `lock` ends the session. The daemon may invalidate tickets lazily
-     (on the next request) and then wipe cached secrets.
+   - TTL expiry or `shutdown` ends the session. The daemon invalidates tickets,
+     wipes cached secrets, and exits on the next request after TTL expiry.
 
 
 ## Extensions (Future)
@@ -103,5 +99,6 @@ This repository uses `spec/NNN-*.md` documents.
 - `spec/040-client-sdk.md` (client SDK connection, ticket loading, request helpers)
 - `spec/050-store-keepassxc.md` (KeePassXC integration via keepassxc-cli export)
 - `spec/060-yubikey-autodetect.md` (optional YubiKey autodetect via ykman)
+- `spec/070-secret-envelope.md` (Secret and SecretEnvelope behavior)
 
 Note: The feature specs listed above are not complete; they evolve as the project matures.

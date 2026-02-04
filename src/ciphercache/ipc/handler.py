@@ -159,6 +159,16 @@ def _require_string_list(payload: dict[str, Any], key: str) -> list[str]:
     return items
 
 
+def _optional_ttl_seconds(payload: dict[str, Any], state: DaemonState) -> int | None:
+    """Return TTL seconds from payload or daemon default if omitted."""
+    ttl_value = payload.get("ttl")
+    if ttl_value is None:
+        return state.config.unlock_ttl_default
+    if not isinstance(ttl_value, str) or not ttl_value:
+        raise ValueError("Missing or invalid 'ttl'")
+    return parse_ttl(ttl_value)
+
+
 def _handle_ping(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle ping requests."""
     _ = state
@@ -176,9 +186,8 @@ def _handle_status(state: DaemonState, request: Envelope) -> dict[str, Any]:
 
 def _handle_unlock(state: DaemonState, request: Envelope) -> dict[str, Any]:
     """Handle unlock requests."""
-    ttl_value = _require_string(request.payload, "ttl")
     secret_names = _require_string_list(request.payload, "secrets")
-    ttl_seconds = parse_ttl(ttl_value)
+    ttl_seconds = _optional_ttl_seconds(request.payload, state)
     if state.config.store_config is not None:
         secrets = load_secrets(state.config.store_config, secret_names)
         if len(secrets) != len(secret_names):

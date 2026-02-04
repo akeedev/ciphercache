@@ -49,13 +49,15 @@ client = Client(config=ClientConfig())
 # client.load_ticket()
 
 # Unlock the store for 1 hour and cache only requested secrets.
-client.unlock("1h", ["service/api"])
+client.unlock(secrets=["service/api"])
 
 secret = client.get_secret("service/api")
 api_key = secret["api_key"]
 
 client.close_store()  # clears cached secrets on the daemon
 ```
+
+Note: `unlock` may omit `ttl` and use the daemon default (default: infinity).
 
 ## Daemon start (if needed)
 Start the daemon in a terminal:

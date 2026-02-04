@@ -80,6 +80,22 @@ def test_unlock_invalid_ttl(locked_state: DaemonState, payload: dict[str, object
     assert response["payload"]["code"] == ERROR_INVALID_REQUEST
 
 
+def test_unlock_uses_default_ttl_when_missing(tmp_path: Path) -> None:
+    config = DaemonConfig(data_dir=tmp_path, unlock_ttl_default=30)
+    state = DaemonState(config=config)
+    request = {
+        "version": "v0",
+        "id": "1",
+        "type": "request",
+        "op": "unlock",
+        "payload": {"secrets": ["service/api"]},
+    }
+    response = handle_request(state, request)
+    assert response["type"] == "response"
+    remaining = state.ttl_remaining_seconds()
+    assert 0 < remaining <= 30
+
+
 def test_unlock_sets_state(tmp_path: Path) -> None:
     config = DaemonConfig(data_dir=tmp_path)
     state = DaemonState(config=config)

@@ -109,11 +109,18 @@ class Client:
         ttl_remaining = ttl_value
         return Status(locked=locked, ttl_remaining_seconds=ttl_remaining)
 
-    def unlock(self, ttl: str, secrets: list[str]) -> bool:
+    def unlock(self, ttl: str | None = None, secrets: list[str] | None = None) -> bool:
         """Unlock the daemon and cache the specified secrets."""
+        if secrets is None and isinstance(ttl, list):
+            secrets = ttl
+            ttl = None
         if not secrets:
             raise ValueError("secrets must be non-empty")
-        payload: dict[str, Any] = {"ttl": ttl, "secrets": secrets}
+        if ttl is not None and (not isinstance(ttl, str) or not ttl):
+            raise ValueError("ttl must be a non-empty string when provided")
+        payload: dict[str, Any] = {"secrets": secrets}
+        if ttl is not None:
+            payload["ttl"] = ttl
         response = self.request("unlock", payload, read_timeout_seconds=self.config.unlock_timeout_seconds)
         return bool(response.get("ok"))
 

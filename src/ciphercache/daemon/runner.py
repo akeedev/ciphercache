@@ -67,6 +67,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="TTL for unlock-all-on-start (e.g., 1h, 30m). Default: infinity.",
     )
     parser.add_argument(
+        "--unlock-ttl-default",
+        default=None,
+        help="Default TTL for unlock requests when omitted (e.g., 1h, 30m). Default: infinity.",
+    )
+    parser.add_argument(
         "--db-path",
         type=Path,
         help="KeePassXC database path.",
@@ -157,11 +162,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         from ciphercache.ttl import parse_ttl
 
         unlock_all_ttl = parse_ttl(args.unlock_ttl)
+    unlock_ttl_default = None
+    if args.unlock_ttl_default:
+        from ciphercache.ttl import parse_ttl
+
+        unlock_ttl_default = parse_ttl(args.unlock_ttl_default)
     config = DaemonConfig(
         data_dir=args.data_dir,
         write_agent_metadata=not args.no_agent_metadata,
         store_config=store_config,
         unlock_all_ttl=unlock_all_ttl,
+        unlock_ttl_default=unlock_ttl_default,
         require_peer_credentials=args.require_peer_credentials,
     )
     state: DaemonState

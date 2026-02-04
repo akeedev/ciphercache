@@ -11,8 +11,8 @@ or crypto internals.
 - Single-user, macOS-first daemon process.
 - Local Unix domain socket server using the `020` IPC protocol.
 - In-memory session state (locked/unlocked, TTL, tickets, cached secrets).
-- Lazy TTL expiry: on request, expired sessions are rejected and the daemon
-  transitions to locked state and wipes cache/tickets.
+- On-demand TTL expiry check: when a request arrives after TTL expiry, the daemon
+  rejects the request, wipes cache/tickets, and exits.
 - Minimal operational observability (status via IPC, safe logs).
 
 ## Non-Goals (MVP)
@@ -29,10 +29,8 @@ or crypto internals.
   - Layer 0: socket directory permissions.
   - Layer 1: peer UID/GID validation (OS-level).
   - Layer 2: ticket validation (handled in IPC logic).
-- Manage daemon lifecycle: startup, graceful shutdown, lock on exit.
-- Only `unlock` initiates store access and user interaction; `get_secret` never triggers unlock.
-- `close_store` clears cached secrets while preserving tickets.
-- Unlock requests include an explicit list of secret names to fetch and cache.
+- Manage daemon lifecycle: startup and graceful shutdown.
+- Store access and user interaction happen at startup only.
 
 ## Process Model
 - Single process with a single socket listener.
@@ -45,7 +43,7 @@ or crypto internals.
 - Socket path: `${data_dir}/ciphercached.sock`.
 - Socket directory must be `0700` (owner-only).
 - Ticket directory is under `data_dir/tickets` (0600 ticket files).
-- Ticket file names are derived from `client_name` after validation (ASCII alnum plus `._-`, start with alnum, max 64 chars; no path separators or `.` / `..`).
+- Ticket file names are derived from `client_name` after validation (see `spec/010-architecture.md`, Ticket generation).
 - Agent metadata (`agent.json`) is written to `data_dir/agent.json` (0600).
   It is intended for debugging and discovery.
 
@@ -55,13 +53,16 @@ or crypto internals.
    - Ensure socket directory exists (0700).
    - Remove stale socket file if present.
    - Bind and listen on socket.
+   - Open the store, read secrets, cache in memory, then close the store.
 2. **Serve**:
    - Accept connection.
    - Validate peer credentials (UID/GID).
    - Read and decode frames; dispatch to handler.
    - Write response frame.
 3. **Shutdown**:
-   - On SIGINT/SIGTERM, lock the daemon and close socket.
+   - When the TTL expires, the next request triggers cache/ticket wipe and exit.
+   - When `shutdown` is requested, wipe cache/tickets and exit immediately.
+   - On SIGINT/SIGTERM, wipe cache/tickets and close socket.
    - Remove socket file.
 
 ## Request Handling
@@ -73,12 +74,11 @@ or crypto internals.
 - Requests larger than the maximum frame size are rejected.
 - Connections that exceed read/write timeouts are closed.
 - `get_secret` returns `locked` if the daemon is locked; it does not initiate unlock.
-- `unlock` requests must include a non-empty list of secrets to cache; otherwise `invalid_request`.
-- `close_store` clears cached secrets and resets store alias while preserving tickets.
+- `shutdown` wipes cached secrets and exits.
 
 ## Access Control (MVP)
-- **Layer 0:** socket path is in an owner-only directory.
-- **Layer 1:** validate peer credentials (UID/GID match expected user).
+- **Layer 0:** socket path is in an owner-only directory (0700).
+- **Layer 1:** attempt to validate peer credentials (UID/GID match expected user); best-effort on macOS (see `spec/010-architecture.md`).
 - **Layer 2:** ticket validation in `get_secret` handler.
 
 ## Logging
@@ -87,17 +87,16 @@ or crypto internals.
 - Ticket values must not be logged.
 - Log a brief summary per request (op + payload keys). When present, log client_name.
 - Default log level for the daemon runner is INFO and should be configurable.
-- If peer credential lookup fails, log the failure at DEBUG with the OS error.
+- If peer credential lookup is unavailable from the OS, log at DEBUG level (not a failure on macOS).
 
-## Optional Unlock on Startup
-The daemon runner may support an option to unlock on startup, prompting for
-KeePassXC credentials immediately. This can improve UX when prompts must be
-entered in the daemon terminal.
+## Startup Unlock
+The daemon unlocks on startup, prompting for KeePassXC credentials immediately.
+This improves UX because prompts are handled in the daemon terminal.
 
-Unlock-all mode:
-- When enabled at startup, the daemon exports and caches all entries from the store.
+Startup behavior:
+- The daemon exports and caches all entries from the store.
 - In this mode, clients with valid tickets may request any cached secret.
-- The startup unlock may accept an optional TTL; default is infinity.
+- TTL is configured via daemon command-line arguments; default is infinity.
 
 ## Agent Metadata (`agent.json`)
 Written at startup and removed on shutdown. Intended for debugging and discovery.
@@ -122,7 +121,6 @@ Notes:
 ## Configuration
 Configuration is provided via a `DaemonConfig` structure:
 - `data_dir: Path`
-- `store_alias_default: str`
 - `socket_path: Path` (defaults to `${data_dir}/ciphercached.sock`)
 - `expected_uid: int` (derived from current user)
 - `expected_gid: int` (optional)
@@ -131,6 +129,7 @@ Configuration is provided via a `DaemonConfig` structure:
 - `write_timeout_seconds: float` (default `5.0`)
 - `write_agent_metadata: bool` (default `True`)
 - `require_peer_credentials: bool` (default `False`)
+- `ttl_seconds: int | None` (configured via CLI; `None` means infinity)
 
 ## Modules and Classes (planned)
 - `ciphercache.daemon.server`
@@ -145,17 +144,17 @@ Configuration is provided via a `DaemonConfig` structure:
 ## Acceptance Criteria (MVP)
 - Daemon binds a Unix socket at the configured path and accepts connections.
 - Socket directory permissions are `0700`; socket file permissions are owner-only.
-- Peer UID/GID validation rejects non-owner clients.
-- If peer credentials are unavailable from the OS, the daemon logs a warning and
-  skips UID/GID validation (still relying on socket permissions and tickets), unless
-  `require_peer_credentials` is enabled.
+- Peer UID/GID validation rejects non-owner clients when credentials can be retrieved.
+- If peer credentials are unavailable from the OS, the daemon logs at DEBUG level and
+  continues (relying on Layer 0 socket permissions and Layer 2 ticket file permissions).
+- If `require_peer_credentials` is enabled and credentials are unavailable, the daemon rejects the connection.
 - A valid `ping` request yields `{"ok": true}` response.
 - Invalid frames yield `invalid_request`.
 - Requests larger than the max frame size are rejected.
 - When TTL has expired, any request (including `get_secret`) is rejected with `locked`,
-  and the daemon transitions to locked state (secrets/tickets cleared).
+  and the daemon wipes cache/tickets and exits.
 - `status` reflects locked/unlocked and TTL remaining accurately.
-- On SIGTERM/SIGINT, daemon locks and removes socket file.
+- On SIGTERM/SIGINT, daemon wipes cache/tickets and removes socket file.
 - `agent.json` is written on startup (when enabled) and removed on shutdown.
 
 ## Decisions
