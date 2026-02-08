@@ -79,7 +79,7 @@ UX note:
 - Do not retry if a response is received with an error code.
 
 ## Classes and Functions (planned)
-- `ciphercache.client.ClientConfig`
+- `ciphercache.client.CipherClientConfig`
   - `data_dir: Path` (defaults to `~/Library/Application Support/ciphercache`)
   - `socket_path: Path | None`
   - `ticket_path: Path | None` (defaults to `${data_dir}/tickets/{client_name}.ticket`)
@@ -92,7 +92,7 @@ UX note:
 - `ciphercache.client.Status`
   - `locked: bool`
   - `ttl_remaining_seconds: int`
-- `ciphercache.client.Client`
+- `ciphercache.client.CipherClient`
   - `ping() -> bool`
   - `status() -> Status`
   - `shutdown() -> bool`
@@ -102,8 +102,8 @@ UX note:
   - `request(op: str, payload: dict[str, object]) -> dict[str, object]`
 
 ## Lifecycle Overview
-- Instantiate `ClientConfig`.
-- Instantiate `Client`.
+- Instantiate `CipherClientConfig`.
+- Instantiate `CipherClient`.
 - The SDK attempts to load the ticket at initialization if the ticket file exists.
   Otherwise it loads it on first request that needs it or via explicit `load_ticket()`.
 - If a request fails with `unauthorized`, the SDK should re-initialize a ticket once
@@ -127,7 +127,7 @@ UX note:
 
 
 ## Decisions
-1. Ticket loading: eager by default (load during `Client` init) with explicit `load_ticket()`.
+1. Ticket loading: eager by default (load during `CipherClient` init) with explicit `load_ticket()`.
 2. `client_init` lives in the SDK so the CLI can stay thin.
 3. `status()` returns a typed dataclass (`Status`).
 4. Expose low-level `request(op, payload)` for advanced usage.

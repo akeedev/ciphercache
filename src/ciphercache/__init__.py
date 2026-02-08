@@ -13,14 +13,14 @@ Version metadata (update when releasing):
 - Repository: https://github.com/drakee/ciphercache
 """
 
-from ciphercache.client import Client, ClientConfig, Status
+from ciphercache.client import CipherClient, CipherClientConfig, Status
 from ciphercache.daemon import DaemonConfig, DaemonState, UnixSocketServer
 from ciphercache.secret import Secret, SecretEnvelope
 from ciphercache.yubikey import detect_yubikey, is_ykman_available
 
 __all__ = [
-    "Client",
-    "ClientConfig",
+    "CipherClient",
+    "CipherClientConfig",
     "Status",
     "DaemonConfig",
     "DaemonState",

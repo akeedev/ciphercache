@@ -21,9 +21,9 @@ environment variables by centralizing access in a local daemon.
    ```
 2. In another terminal or a Python session:
    ```python
-   from ciphercache import Client, ClientConfig
+   from ciphercache import CipherClient, CipherClientConfig
 
-   client = Client(config=ClientConfig())
+   client = CipherClient(config=CipherClientConfig())
    secret = client.get_secret("service/api")
    print(secret)
    ```

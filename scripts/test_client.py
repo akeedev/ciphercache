@@ -20,7 +20,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from ciphercache.client import Client, ClientConfig
+from ciphercache.client import CipherClient, CipherClientConfig
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -44,7 +44,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = _parse_args(argv)
     secret_name = str(args.secret)
 
-    client = Client(config=ClientConfig(data_dir=args.data_dir))
+    client = CipherClient(config=CipherClientConfig(data_dir=args.data_dir))
     print("Ping:", client.ping())
     print("Status:", client.status())
     print("Secret:", client.get_secret(secret_name))

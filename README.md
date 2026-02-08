@@ -46,10 +46,10 @@ pip install dist/ciphercache-*.whl
 ## SDK usage
 
 ```python
-from ciphercache import Client, ClientConfig
+from ciphercache import CipherClient, CipherClientConfig
 
-config = ClientConfig()
-client = Client(config=config)
+config = CipherClientConfig()
+client = CipherClient(config=config)
 
 # Fetch a cached secret (daemon unlocks on startup).
 secret = client.get_secret("service/api")

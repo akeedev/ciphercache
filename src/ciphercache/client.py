@@ -5,7 +5,7 @@ Provided "AS IS", without warranties or guarantees; use at your own risk.
 
 Module overview:
 - Implements the Python client SDK for ciphercache.
-- Primary classes: `ClientConfig` (connection configuration) and `Client` (SDK API).
+- Primary classes: `CipherClientConfig` (connection configuration) and `CipherClient` (SDK API).
 - Supporting dataclass: `Status` for typed status responses.
 - Request flow: build IPC envelope, encode frame, open Unix socket, send, read response,
   decode, map errors to exceptions, return typed results.
@@ -43,7 +43,7 @@ class Status:
 
 
 @dataclass(slots=True)
-class ClientConfig:
+class CipherClientConfig:
     """Configuration for the client SDK."""
 
     data_dir: Path = field(default_factory=lambda: _default_data_dir())
@@ -65,10 +65,10 @@ class ClientConfig:
 
 
 @dataclass(slots=True)
-class Client:
-    """Client SDK for communicating with ciphercached."""
+class CipherClient:
+    """CipherClient SDK for communicating with ciphercached."""
 
-    config: ClientConfig
+    config: CipherClientConfig
     _ticket: str | None = None
 
     def __post_init__(self) -> None:
@@ -206,7 +206,7 @@ def _request_envelope(op: str, payload: dict[str, Any]) -> dict[str, object]:
 
 
 def _send_with_retries(
-    config: ClientConfig,
+    config: CipherClientConfig,
     envelope: dict[str, object],
     read_timeout_seconds: float | None = None,
 ) -> dict[str, object]:
@@ -226,7 +226,7 @@ def _send_with_retries(
 
 
 def _send_once(
-    config: ClientConfig,
+    config: CipherClientConfig,
     envelope: dict[str, object],
     read_timeout_seconds: float | None = None,
 ) -> dict[str, object]:

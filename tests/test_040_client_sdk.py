@@ -9,7 +9,7 @@ from shutil import rmtree
 
 import pytest
 
-from ciphercache.client import Client, ClientConfig, Status, _load_agent_socket_path
+from ciphercache.client import CipherClient, CipherClientConfig, Status, _load_agent_socket_path
 from ciphercache.ipc.framing import encode_message
 
 
@@ -105,7 +105,7 @@ def test_status_returns_typed_dataclass() -> None:
     }
     thread = _serve_once(socket_path, response)
     try:
-        client = Client(config=ClientConfig(data_dir=data_dir))
+        client = CipherClient(config=CipherClientConfig(data_dir=data_dir))
         status = client.status()
         assert isinstance(status, Status)
         assert status.locked is False
@@ -133,8 +133,8 @@ def test_agent_json_overrides_socket_path() -> None:
     }
     thread = _serve_once(socket_path, response)
     try:
-        config = ClientConfig(data_dir=data_dir, socket_path=data_dir / "bogus.sock")
-        client = Client(config=config)
+        config = CipherClientConfig(data_dir=data_dir, socket_path=data_dir / "bogus.sock")
+        client = CipherClient(config=config)
         assert client.ping() is True
     finally:
         thread.join(timeout=1.0)
@@ -145,7 +145,7 @@ def test_default_ticket_path_uses_client_name() -> None:
     """Default ticket path should include client_name when ticket_path is unset."""
     data_dir = _short_temp_dir()
     try:
-        config = ClientConfig(data_dir=data_dir, client_name="custom")
+        config = CipherClientConfig(data_dir=data_dir, client_name="custom")
         assert config.ticket_path == data_dir / "tickets" / "custom.ticket"
     finally:
         rmtree(data_dir, ignore_errors=True)
@@ -169,7 +169,7 @@ def test_get_secret_uses_ticket() -> None:
     }
     thread = _serve_once(socket_path, response)
     try:
-        client = Client(config=ClientConfig(data_dir=data_dir))
+        client = CipherClient(config=CipherClientConfig(data_dir=data_dir))
         secret = client.get_secret("service/api")
         assert secret["api_key"].reveal() == "demo"
     finally:
@@ -205,8 +205,8 @@ def test_get_secret_auto_client_init_when_missing_ticket() -> None:
 
     thread = _serve_sequence(socket_path, responses)
     try:
-        config = ClientConfig(data_dir=data_dir, ticket_path=tickets_dir / "missing.ticket")
-        client = Client(config=config)
+        config = CipherClientConfig(data_dir=data_dir, ticket_path=tickets_dir / "missing.ticket")
+        client = CipherClient(config=config)
         secret = client.get_secret("service/api")
         assert secret["api_key"].reveal() == "demo"
     finally:
@@ -227,7 +227,7 @@ def test_error_mapping_unauthorized() -> None:
     }
     thread = _serve_once(socket_path, response)
     try:
-        client = Client(config=ClientConfig(data_dir=data_dir))
+        client = CipherClient(config=CipherClientConfig(data_dir=data_dir))
         with pytest.raises(PermissionError):
             client.request("ping", {})
     finally:
@@ -270,7 +270,7 @@ def test_get_secret_retries_on_invalid_ticket() -> None:
 
     thread = _serve_sequence(socket_path, responses)
     try:
-        client = Client(config=ClientConfig(data_dir=data_dir))
+        client = CipherClient(config=CipherClientConfig(data_dir=data_dir))
         secret = client.get_secret("service/api")
         assert secret["api_key"].reveal() == "demo"
     finally:
@@ -291,7 +291,7 @@ def test_shutdown_returns_true() -> None:
     }
     thread = _serve_once(socket_path, response)
     try:
-        client = Client(config=ClientConfig(data_dir=data_dir))
+        client = CipherClient(config=CipherClientConfig(data_dir=data_dir))
         assert client.shutdown() is True
     finally:
         thread.join(timeout=1.0)
@@ -301,8 +301,8 @@ def test_shutdown_returns_true() -> None:
 def test_retry_on_connection_failure() -> None:
     """Retries are attempted for transient connection failures."""
     data_dir = _short_temp_dir()
-    config = ClientConfig(data_dir=data_dir, retries=2, retry_backoff_seconds=0.0)
-    client = Client(config=config)
+    config = CipherClientConfig(data_dir=data_dir, retries=2, retry_backoff_seconds=0.0)
+    client = CipherClient(config=config)
     try:
         with pytest.raises(FileNotFoundError):
             client.ping()

@@ -7,9 +7,9 @@
 
 ## Quickstart (SDK)
 ```python
-from ciphercache import Client, ClientConfig
+from ciphercache import CipherClient, CipherClientConfig
 
-client = Client(config=ClientConfig())
+client = CipherClient(config=CipherClientConfig())
 secret = client.get_secret("service/api")
 print(secret["api_key"].reveal())
 client.shutdown()
@@ -58,9 +58,9 @@ KeePassXC will prompt in the daemon terminal during startup.
 ## Tickets
 Tickets are per-client bearer tokens stored as `0600` files. Use the SDK:
 ```python
-from ciphercache import Client, ClientConfig
+from ciphercache import CipherClient, CipherClientConfig
 
-client = Client(config=ClientConfig())
+client = CipherClient(config=CipherClientConfig())
 ticket_path = client.client_init("my_client")
 client.config.ticket_path = ticket_path
 client.load_ticket()

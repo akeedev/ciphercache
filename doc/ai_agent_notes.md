@@ -26,7 +26,7 @@ It focuses on the running daemon (`ciphercached`) and the Python client SDK.
   `~/Library/Application Support/ciphercache/agent.json` (0600), which can
   override the socket path.
 
-The SDK handles discovery automatically when `ClientConfig` is default.
+The SDK handles discovery automatically when `CipherClientConfig` is default.
 
 ## Ticket lifecycle
 - Create a ticket once per client app:
@@ -36,9 +36,9 @@ The SDK handles discovery automatically when `ClientConfig` is default.
 
 ## Minimal SDK usage
 ```python
-from ciphercache import Client, ClientConfig
+from ciphercache import CipherClient, CipherClientConfig
 
-client = Client(config=ClientConfig())
+client = CipherClient(config=CipherClientConfig())
 
 # One-time ticket creation (do this once per client app):
 # ticket_path = client.client_init("my_app")

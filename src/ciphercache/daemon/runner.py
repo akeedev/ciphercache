@@ -118,7 +118,11 @@ def _unlock_on_start(state: DaemonState, demo: bool) -> None:
     config = state.config.store_config
     if config is None:
         raise ValueError("store_config is required for startup unlock")
-    secrets = load_all_secrets(config)
+    try:
+        secrets = load_all_secrets(config)
+    except (OSError, RuntimeError, ValueError, SyntaxError) as exc:
+        logging.error("Could not open KeePassXC file %s: %s", config.database_path, exc)
+        raise SystemExit(1) from exc
     if demo:
         secrets = {name: {"demo": True, "value": f"demo:{name}"} for name in secrets.keys()}
     state.unlock(state.config.ttl_seconds)
