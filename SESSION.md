@@ -1,31 +1,29 @@
 # SESSION.md
 
 ## Session date
-- 2026-02-02
+- 2026-02-04
 
 ## Current status
-- Working branch: `main` (local ahead of origin by 2 commits)
+- Working branch: `20260204-fixes`
 - IPC protocol + daemon + SDK implemented and tested.
-- KeePassXC integration (export XML parsing) implemented and wired to daemon unlock.
+- KeePassXC integration (export XML parsing) implemented and wired to startup unlock.
 - YubiKey autodetect via `ykman list` added (spec 060).
 - Client ticket auto-init + retry on invalid tickets.
 - Client name validation and safe ticket file names enforced.
-- Unlock timeout extended (client-side) for password/YubiKey prompts.
 - Peer UID/GID validation is best-effort with optional strict flag.
-- Demo notebooks updated for direct CLI export vs daemon unlock flows.
+- SecretEnvelope added for redacted secret handling (spec 070).
+- Demo notebooks updated for startup unlock flow.
 - Documentation under `doc/` updated including user guide and MVP checklist.
-- Consistency and readiness pass completed with added tests and doc updates.
 
 ## Key decisions (specs)
 - IPC framing: length-prefixed JSON.
 - Message envelope v0 with request/response/error.
 - Tickets are per client; soft identity only.
-- Unlock requires explicit secret list; `get_secret` never triggers unlock.
-- Unlock-all on daemon startup is optional (caches all entries).
+- Daemon unlocks and caches all secrets at startup; `get_secret` never triggers unlock.
 - KeePassXC integration via `keepassxc-cli export` (XML in memory).
 - TTL format supports `s|m|h|d`, combined tokens, and `infinity`.
 - Client does not select database paths (daemon config fixed at startup).
-- `close_store` clears cached secrets while preserving tickets.
+- SecretEnvelope redacts secrets by default.
 - Peer credential validation is best-effort; strict enforcement is opt-in.
 
 ## Files changed (high level)
@@ -49,7 +47,7 @@
 
 ## Git status snapshot
 - `git status -sb`:
-  - `## main...origin/main [ahead 2]`
+  - `## 20260204-fixes`
 
 ## TODO next session
 - Decide on release/versioning cadence if needed.

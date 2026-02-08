@@ -35,7 +35,6 @@ class DaemonConfig:
     """Configuration for the daemon runtime."""
 
     data_dir: Path
-    store_alias_default: str = "default"
     socket_path: Path | None = None
     expected_uid: int | None = None
     expected_gid: int | None = None
@@ -45,7 +44,7 @@ class DaemonConfig:
     write_timeout_seconds: float = 5.0
     write_agent_metadata: bool = True
     store_config: KeePassXCConfig | None = None
-    unlock_all_ttl: int | None = None
+    ttl_seconds: int | None = None
 
     def __post_init__(self) -> None:
         """Populate derived defaults for socket and expected credentials."""
@@ -65,51 +64,38 @@ class DaemonState:
         config: Runtime configuration for file locations and defaults.
         locked: Whether the daemon is locked (no secrets available).
         ttl_expiry: Monotonic timestamp for TTL expiry, or None for infinity.
-        active_store_alias: Alias of the currently active store (MVP single store).
-        secrets: In-memory secrets by store alias and secret name.
-        allowed_secrets: Secret names allowed for this unlock session.
+        secrets: In-memory secrets by secret name.
         tickets: Active ticket tokens for authorization.
+        shutdown_requested: Whether the daemon should exit after the current request.
     """
 
     config: DaemonConfig
     locked: bool = True  # Locked state blocks secret access.
     ttl_expiry: float | None = None  # Monotonic expiry timestamp; None for infinity.
-    active_store_alias: str | None = None  # Active store alias for the session.
-    secrets: dict[str, dict[str, dict[str, object]]] = field(default_factory=dict)  # Store -> name -> secret.
-    allowed_secrets: set[str] = field(default_factory=set)  # Allowed secret names for this unlock.
+    secrets: dict[str, dict[str, object]] = field(default_factory=dict)  # name -> secret.
     tickets: set[str] = field(default_factory=set)  # Active ticket tokens.
+    shutdown_requested: bool = False
 
-    def unlock(
-        self,
-        ttl_seconds: int | None,
-        secrets: list[str],
-        store_alias: str | None = None,
-    ) -> None:
-        """Unlock the daemon and set the active store, TTL, and allowed secrets."""
+    def unlock(self, ttl_seconds: int | None) -> None:
+        """Unlock the daemon and set the TTL for the session."""
         self.locked = False
-        self.active_store_alias = store_alias or self.config.store_alias_default
-        self.allowed_secrets = set(secrets)
-        self.secrets.clear()
         if ttl_seconds is None:
             self.ttl_expiry = None
         else:
             self.ttl_expiry = time.monotonic() + ttl_seconds
+        self.shutdown_requested = False
 
     def lock(self) -> None:
         """Lock the daemon and wipe cached secrets."""
         self.locked = True
         self.ttl_expiry = None
         self.secrets.clear()
-        self.allowed_secrets.clear()
         self.tickets.clear()
 
-    def close_store(self) -> None:
-        """Close the active store, wiping cached secrets but preserving tickets."""
-        self.locked = True
-        self.ttl_expiry = None
-        self.active_store_alias = None
-        self.secrets.clear()
-        self.allowed_secrets.clear()
+    def request_shutdown(self) -> None:
+        """Request daemon shutdown after responding to the current request."""
+        self.lock()
+        self.shutdown_requested = True
 
     def expire_if_needed(self) -> None:
         """Expire the session if TTL has passed."""
@@ -117,6 +103,7 @@ class DaemonState:
             return
         if time.monotonic() >= self.ttl_expiry:
             self.lock()
+            self.shutdown_requested = True
 
     def ttl_remaining_seconds(self) -> int:
         """Return remaining TTL seconds (0 if locked; large value for infinity)."""
@@ -155,14 +142,12 @@ class DaemonState:
             return False
         return token in self.tickets
 
-    def get_secret(self, store_alias: str, secret_name: str) -> dict[str, object] | None:
-        """Return a cached secret dict for a store alias and name."""
+    def get_secret(self, secret_name: str) -> dict[str, object] | None:
+        """Return a cached secret dict for a name."""
         self.expire_if_needed()
         if self.locked:
             return None
-        if secret_name not in self.allowed_secrets:
-            return None
-        return self.secrets.get(store_alias, {}).get(secret_name)
+        return self.secrets.get(secret_name)
 
 
 def _validate_client_name(client_name: str) -> str:

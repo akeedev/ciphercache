@@ -106,11 +106,11 @@ def test_find_keepassxc_cli_prefers_highest_version(tmp_path: Path, monkeypatch:
     assert found == paths[1]
 
 
-def test_unlock_ttl_arg_parses() -> None:
-    """Runner should accept --unlock-ttl and parse it."""
+def test_ttl_arg_parses() -> None:
+    """Runner should accept --ttl and parse it."""
     parser = _build_parser()
-    args = parser.parse_args(["--unlock-all-on-start", "--unlock-ttl", "1h", "--db-path", "demo.kdbx"])
-    assert args.unlock_ttl == "1h"
+    args = parser.parse_args(["--ttl", "1h", "--db-path", "demo.kdbx"])
+    assert args.ttl == "1h"
 
 
 def test_ykman_available_false_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:

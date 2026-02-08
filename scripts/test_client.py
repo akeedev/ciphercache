@@ -5,7 +5,7 @@ Provided "AS IS", without warranties or guarantees; use at your own risk.
 
 Module overview:
 - Development entrypoint for exercising the ciphercache client SDK.
-- Connects to a local daemon, optionally unlocks secrets, and fetches one secret.
+- Connects to a local daemon, fetches one secret, and reports status.
 
 Version metadata (update when releasing):
 - Version: 0.1.0
@@ -20,7 +20,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from ciphercache.client import Client, ClientConfig
+from ciphercache.client import CipherClient, CipherClientConfig
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -33,51 +33,21 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Data directory for socket and tickets.",
     )
     parser.add_argument(
-        "--ttl",
-        default="1h",
-        help="TTL for unlock (default: 1h).",
-    )
-    parser.add_argument(
-        "--secrets",
+        "--secret",
         default="service/api",
-        help="Comma-separated secret names to unlock.",
-    )
-    parser.add_argument(
-        "--skip-unlock",
-        action="store_true",
-        help="Skip calling unlock before get_secret.",
-    )
-    parser.add_argument(
-        "--unlock-all-on-start",
-        action="store_true",
-        help="Assume daemon was started with unlock-all-on-start.",
+        help="Secret name to request.",
     )
     return parser.parse_args(argv)
-
-
-def _parse_secrets(raw: str) -> list[str]:
-    """Parse comma-separated secret names into a list."""
-    return [item.strip() for item in raw.split(",") if item.strip()]
-
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Run a basic client flow against the daemon."""
     args = _parse_args(argv)
-    secrets = _parse_secrets(args.secrets)
-    if not secrets:
-        raise ValueError("At least one secret name is required")
+    secret_name = str(args.secret)
 
-    client = Client(config=ClientConfig(data_dir=args.data_dir))
+    client = CipherClient(config=CipherClientConfig(data_dir=args.data_dir))
     print("Ping:", client.ping())
     print("Status:", client.status())
-
-    if not args.skip_unlock:
-        if args.unlock_all_on_start:
-            print("Skipping unlock (daemon already unlocked all secrets)")
-        else:
-            print("Unlock:", client.unlock(args.ttl, secrets))
-
-    print("Secret:", client.get_secret(secrets[0]))
+    print("Secret:", client.get_secret(secret_name))
 
 
 if __name__ == "__main__":

@@ -20,8 +20,8 @@ from ciphercache.ttl import parse_ttl
 def daemon_state(tmp_path: Path) -> DaemonState:
     config = DaemonConfig(data_dir=tmp_path)
     state = DaemonState(config=config)
-    state.unlock(parse_ttl("1h"), ["service/api"])
-    state.secrets["default"] = {"service/api": {"api_key": "test"}}
+    state.unlock(parse_ttl("1h"))
+    state.secrets = {"service/api": {"api_key": "test"}}
     return state
 
 
@@ -68,21 +68,6 @@ def test_get_secret_invalid_ticket(daemon_state: DaemonState) -> None:
     assert response["payload"]["code"] == ERROR_UNAUTHORIZED
 
 
-def test_get_secret_unknown_store(daemon_state: DaemonState) -> None:
-    ticket_path = daemon_state.issue_ticket("demo")
-    ticket = ticket_path.read_text(encoding="utf-8")
-    request = {
-        "version": "v0",
-        "id": "secret",
-        "type": "request",
-        "op": "get_secret",
-        "payload": {"ticket": ticket, "secret_name": "service/api", "store": "other"},
-    }
-    response = handle_request(daemon_state, request)
-    assert response["type"] == "error"
-    assert response["payload"]["code"] == ERROR_NOT_FOUND
-
-
 def test_unknown_op_returns_invalid_request(daemon_state: DaemonState) -> None:
     request = {"version": "v0", "id": "oops", "type": "request", "op": "nope", "payload": {}}
     response = handle_request(daemon_state, request)
@@ -109,8 +94,7 @@ def test_get_secret_defaults_store(daemon_state: DaemonState) -> None:
     assert response["payload"]["secret"]["api_key"] == "test"
 
 
-def test_get_secret_not_in_allowlist(daemon_state: DaemonState) -> None:
-    daemon_state.secrets["default"]["other"] = {"value": "nope"}
+def test_get_secret_unknown_name_returns_not_found(daemon_state: DaemonState) -> None:
     ticket_path = daemon_state.issue_ticket("demo")
     ticket = ticket_path.read_text(encoding="utf-8")
     request = {
@@ -118,8 +102,15 @@ def test_get_secret_not_in_allowlist(daemon_state: DaemonState) -> None:
         "id": "secret",
         "type": "request",
         "op": "get_secret",
-        "payload": {"ticket": ticket, "secret_name": "other"},
+        "payload": {"ticket": ticket, "secret_name": "missing"},
     }
     response = handle_request(daemon_state, request)
     assert response["type"] == "error"
     assert response["payload"]["code"] == ERROR_NOT_FOUND
+
+
+def test_shutdown_request_sets_shutdown_flag(daemon_state: DaemonState) -> None:
+    request = {"version": "v0", "id": "shutdown", "type": "request", "op": "shutdown", "payload": {}}
+    response = handle_request(daemon_state, request)
+    assert response["type"] == "response"
+    assert daemon_state.shutdown_requested is True

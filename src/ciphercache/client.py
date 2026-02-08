@@ -5,7 +5,7 @@ Provided "AS IS", without warranties or guarantees; use at your own risk.
 
 Module overview:
 - Implements the Python client SDK for ciphercache.
-- Primary classes: `ClientConfig` (connection configuration) and `Client` (SDK API).
+- Primary classes: `CipherClientConfig` (connection configuration) and `CipherClient` (SDK API).
 - Supporting dataclass: `Status` for typed status responses.
 - Request flow: build IPC envelope, encode frame, open Unix socket, send, read response,
   decode, map errors to exceptions, return typed results.
@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from ciphercache.ipc.framing import decode_single_frame, encode_message
+from ciphercache.secret import SecretEnvelope
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,18 +43,16 @@ class Status:
 
 
 @dataclass(slots=True)
-class ClientConfig:
+class CipherClientConfig:
     """Configuration for the client SDK."""
 
     data_dir: Path = field(default_factory=lambda: _default_data_dir())
     socket_path: Path | None = None
     ticket_path: Path | None = None
     client_name: str = "default"
-    store_alias: str | None = None
     max_frame_bytes: int = 1_000_000
     read_timeout_seconds: float = 5.0
     write_timeout_seconds: float = 5.0
-    unlock_timeout_seconds: float = 300.0
     retries: int = 3
     retry_backoff_seconds: float = 0.1
 
@@ -66,10 +65,10 @@ class ClientConfig:
 
 
 @dataclass(slots=True)
-class Client:
-    """Client SDK for communicating with ciphercached."""
+class CipherClient:
+    """CipherClient SDK for communicating with ciphercached."""
 
-    config: ClientConfig
+    config: CipherClientConfig
     _ticket: str | None = None
 
     def __post_init__(self) -> None:
@@ -109,22 +108,9 @@ class Client:
         ttl_remaining = ttl_value
         return Status(locked=locked, ttl_remaining_seconds=ttl_remaining)
 
-    def unlock(self, ttl: str, secrets: list[str]) -> bool:
-        """Unlock the daemon and cache the specified secrets."""
-        if not secrets:
-            raise ValueError("secrets must be non-empty")
-        payload: dict[str, Any] = {"ttl": ttl, "secrets": secrets}
-        response = self.request("unlock", payload, read_timeout_seconds=self.config.unlock_timeout_seconds)
-        return bool(response.get("ok"))
-
-    def lock(self) -> bool:
-        """Lock the daemon and clear cached secrets."""
-        response = self.request("lock", {})
-        return bool(response.get("ok"))
-
-    def close_store(self) -> bool:
-        """Close the active store, clearing cached secrets but preserving tickets."""
-        response = self.request("close_store", {})
+    def shutdown(self) -> bool:
+        """Request daemon shutdown and secret cache wipe."""
+        response = self.request("shutdown", {})
         return bool(response.get("ok"))
 
     def client_init(self, client_name: str) -> Path:
@@ -136,21 +122,19 @@ class Client:
             raise ValueError("Missing ticket_path in response")
         return Path(ticket_path)
 
-    def get_secret(self, name: str) -> dict[str, object]:
-        """Fetch a secret by name from the daemon."""
+    def get_secret(self, name: str) -> SecretEnvelope:
+        """Fetch a secret by name from the daemon as a SecretEnvelope."""
         payload = self._build_get_secret_payload(name)
         try:
             response = self.request("get_secret", payload)
         except PermissionError:
             ticket = self._refresh_ticket()
             payload = {"ticket": ticket, "secret_name": name}
-            if self.config.store_alias:
-                payload["store"] = self.config.store_alias
             response = self.request("get_secret", payload)
         secret = response.get("secret")
         if not isinstance(secret, dict):
             raise ValueError("Missing secret in response")
-        return secret
+        return SecretEnvelope.from_payload(secret)
 
     def _ensure_ticket(self) -> str:
         """Ensure a client ticket exists, auto-initializing if needed."""
@@ -165,8 +149,6 @@ class Client:
         """Build the get_secret payload with a valid ticket."""
         ticket = self._ticket or self._ensure_ticket()
         payload: dict[str, Any] = {"ticket": ticket, "secret_name": name}
-        if self.config.store_alias:
-            payload["store"] = self.config.store_alias
         return payload
 
     def _refresh_ticket(self) -> str:
@@ -224,7 +206,7 @@ def _request_envelope(op: str, payload: dict[str, Any]) -> dict[str, object]:
 
 
 def _send_with_retries(
-    config: ClientConfig,
+    config: CipherClientConfig,
     envelope: dict[str, object],
     read_timeout_seconds: float | None = None,
 ) -> dict[str, object]:
@@ -244,7 +226,7 @@ def _send_with_retries(
 
 
 def _send_once(
-    config: ClientConfig,
+    config: CipherClientConfig,
     envelope: dict[str, object],
     read_timeout_seconds: float | None = None,
 ) -> dict[str, object]:

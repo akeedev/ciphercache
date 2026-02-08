@@ -1,7 +1,8 @@
 # ciphercache
 
-**ciphercache** is a locally running **secret agent daemon** that unlocks
-requested secrets from a secure store (initially: a KeePassXC database) and then serves those secrets from an **in-memory cache** for the configured TTL. 
+**ciphercache** is a locally running **secret agent daemon** that unlocks a secure
+store (initially: a KeePassXC database) at startup and then serves secrets from an
+**in-memory cache** for the configured TTL.
 
 Client software can be restarted frequently during development and still retrieve secrets as long as a **session ticket** and **TTL (Time To Live)** remain valid. TTL expiry is enforced on each request; expired sessions lock the daemon and clear cached secrets. The primary transport is **IPC (Inter-Process Communication)** via **Unix domain sockets**. 
 
@@ -14,7 +15,7 @@ Optionally, we might later add a **TCP listener with mTLS (mutual TLS, i.e., TLS
 ## Example quickstart
 
 ```bash
-uv run python scripts/run_daemon.py --demo
+uv run python scripts/run_daemon.py --demo --db-path testdata/demopasswords.kdbx
 ```
 
 ## Getting started
@@ -45,22 +46,18 @@ pip install dist/ciphercache-*.whl
 ## SDK usage
 
 ```python
-from ciphercache import Client, ClientConfig
+from ciphercache import CipherClient, CipherClientConfig
 
-config = ClientConfig()
-client = Client(config=config)
+config = CipherClientConfig()
+client = CipherClient(config=config)
 
-# Unlock the daemon and cache the required secrets.
-# Requires the daemon to run in demo mode or with KeePassXC configuration.
-# Unlock may take time due to password/YubiKey prompts; adjust unlock_timeout_seconds if needed.
-client.unlock("1h", ["service/api"])
-
-# Fetch a cached secret.
+# Fetch a cached secret (daemon unlocks on startup).
 secret = client.get_secret("service/api")
-print(secret["api_key"])
+print(secret)
+print(secret["api_key"].reveal())
 
-# Close the store (clears cached secrets but keeps tickets).
-client.close_store()
+# Shutdown the daemon (clears cached secrets and exits).
+client.shutdown()
 ```
 
 ## KeePassXC integration (daemon)
@@ -73,18 +70,8 @@ uv run python scripts/run_daemon.py \
   --yubikey 1:12345678 \
   --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
 ```
-Use `--require-peer-credentials` to fail if the OS cannot provide UID/GID for the client.
-
-Unlock-all on startup (caches all entries at start):
-
-```bash
-uv run python scripts/run_daemon.py \
-  --unlock-all-on-start \
-  --unlock-ttl 1h \
-  --db-path testdata/demopasswords.kdbx \
-  --yubikey 1:12345678 \
-  --keepassxc-cli-path /Applications/KeePassXC_2.7.6.app/Contents/MacOS/keepassxc-cli
-```
+Use `--ttl 1h` to set a session TTL, or omit it for infinity. Use
+`--require-peer-credentials` to fail if the OS cannot provide UID/GID for the client.
 
 ## Example tests
 
