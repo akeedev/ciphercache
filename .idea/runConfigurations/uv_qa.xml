@@ -1,8 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="uv qa" type="CompoundRunConfigurationType">
-    <toRun name="uv mypy" type="ShConfigurationType" />
-    <toRun name="uv pytest" type="ShConfigurationType" />
-    <toRun name="uv ruff" type="ShConfigurationType" />
-    <method v="2" />
-  </configuration>
-</component>

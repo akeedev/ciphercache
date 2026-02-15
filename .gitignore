@@ -27,9 +27,4 @@ uv.lock
 .DS_Store
 
 # IDE
-.idea/workspace.xml
-.idea/shelf/
-.idea/httpRequests/
-.idea/dataSources/
-.idea/dataSources.local.xml
-.idea/queries/
+.idea/
