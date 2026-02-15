@@ -28,3 +28,6 @@ uv.lock
 
 # IDE
 .idea/
+
+# Claude Code
+.claude/
